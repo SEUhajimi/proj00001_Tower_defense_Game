@@ -34,6 +34,8 @@ export class Hud {
       case 'auto': s.autoDeploy(); break;
       case 'start': s.startBattle(); break;
       case 'all': s.setAllStance(arg as Stance); break;
+      case 'selectAll': s.selectAll(); break;
+      case 'clearSel': s.clearSelection(); break;
       case 'pause': s.paused = !s.paused; this.render(); break;
       case 'speed': s.speed = s.speed >= 4 ? 1 : s.speed * 2; this.render(); break;
       case 'retreat': s.retreat(); break;
@@ -68,6 +70,7 @@ export class Hud {
     set('e-units', String(theirs.filter(isMobile).length));
     set('e-towers', String(theirs.filter(e => e.def.kind === 'tower' || e.def.kind === 'fort').length));
     set('e-hq', b.hqDown.enemy ? '已摧毁（敌方伤害 -30%）' : '完好');
+    set('sel', String(s.selected.size));
   }
 
   // ---------- 各阶段 ----------
@@ -112,11 +115,16 @@ export class Hud {
         <tr><td class="foe">敌方</td><td data-v="e-units"></td><td data-v="e-towers"></td></tr>
       </table>
       <p>敌方指挥部：<b data-v="e-hq"></b></p>
-      <h3>指挥全军</h3>
+      <h3>部队指挥　<span class="sel">已选 <b data-v="sel"></b> 支</span></h3>
       <div class="row">
-        ${btn('all', 'assault', '全军出击')}
-        ${btn('all', 'hold', '全军驻守')}
+        ${btn('selectAll', '', '全选')}
+        ${btn('clearSel', '', '取消选择', { disabled: !s.selected.size })}
       </div>
+      <div class="row" style="margin-top:6px">
+        ${btn('all', 'assault', s.selected.size ? '选中的出击' : '全军出击')}
+        ${btn('all', 'hold', s.selected.size ? '选中的驻守' : '全军驻守')}
+      </div>
+      <p class="hint">左键拖动框选（Shift 追加）· 右键点敌人集火 · 右键点空地移动，到达后驻守</p>
       <h3>战斗控制</h3>
       <div class="row">
         ${btn('pause', '', s.paused ? '继续' : '暂停')}

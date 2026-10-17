@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
 import type { DamageType } from '../data/combat';
 import { DEFS, type DefId } from '../data/units';
-import { Battle, type Entity, type Stance } from '../sim/battle';
+import { Battle, isMobile, type Entity, type Stance } from '../sim/battle';
 import { autoDeploy, type Deployment } from '../sim/deploy';
 import { createPrototypeBattle, ENEMY_HQ_CENTER, MAP_H, MAP_W } from '../sim/scenario';
 import { Hud } from '../ui/hud';
-import { pointsOf, TILE_H, tileDiamond, toScreen, toWorld } from './iso';
+import { footprintDiamond, pointsOf, TILE_H, tileDiamond, toScreen, toWorld } from './iso';
 import { CUBE_HEIGHT, makeTextures, textureKey } from './textures';
 
 export type Phase = 'deploy' | 'battle' | 'result';
@@ -24,6 +24,8 @@ const SHOT_COLOR: Record<DamageType, number> = {
 };
 
 const MAX_STEPS_PER_FRAME = 40;
+const PICK_RADIUS = 18; // 点选单位的容差（世界像素）
+const DRAG_THRESHOLD = 6; // 鼠标移动超过这么多像素才算拖动
 
 export class BattleScene extends Phaser.Scene {
   battle!: Battle;
@@ -34,6 +36,7 @@ export class BattleScene extends Phaser.Scene {
   speed = 1;
   paused = false;
   deployedCounts: Partial<Record<DefId, number>> = {};
+  selected = new Set<number>(); // 交战时框选中的我方部队
 
   private seed = 1;
   private acc = 0;
@@ -46,6 +49,8 @@ export class BattleScene extends Phaser.Scene {
   private effects: Effect[] = [];
   private hover: { x: number; y: number } | null = null;
   private dragFrom: { x: number; y: number; scrollX: number; scrollY: number } | null = null;
+  // 框选：世界坐标矩形 + 起点屏幕坐标（用来判断是拖动还是单击）
+  private box: { x0: number; y0: number; x1: number; y1: number; sx: number; sy: number } | null = null;
   private keys!: Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT', Phaser.Input.Keyboard.Key>;
   private hud!: Hud;
 
@@ -58,6 +63,7 @@ export class BattleScene extends Phaser.Scene {
     this.sprites = new Map();
     this.rocks = [];
     this.effects = [];
+    this.selected = new Set();
     makeTextures(this);
     this.terrain = this.add.graphics().setDepth(-1000);
     this.zone = this.add.graphics().setDepth(-999);
@@ -119,8 +125,20 @@ export class BattleScene extends Phaser.Scene {
     this.setPhase('battle');
   }
 
+  // 有选中的部队就只改它们，否则改全军
   setAllStance(stance: Stance): void {
-    this.battle.setStance('player', stance);
+    this.battle.setStance('player', stance, this.selected.size ? [...this.selected] : undefined);
+    this.hud.render();
+  }
+
+  selectAll(): void {
+    this.selected = new Set(this.commandable().map(e => e.id));
+    this.hud.render();
+  }
+
+  clearSelection(): void {
+    if (!this.selected.size) return;
+    this.selected.clear();
     this.hud.render();
   }
 
@@ -300,6 +318,7 @@ export class BattleScene extends Phaser.Scene {
   private drawOverlay(alpha: number): void {
     const g = this.overlay;
     g.clear();
+    this.drawSelection(g, alpha);
     for (const e of this.battle.entities) {
       if (!e.alive) continue;
       const x = e.px + (e.x - e.px) * alpha, y = e.py + (e.y - e.py) * alpha;
@@ -346,6 +365,99 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  // 选中部队脚下的绿圈、它们集火目标上的红框、框选矩形
+  private drawSelection(g: Phaser.GameObjects.Graphics, alpha: number): void {
+    const targets = new Set<number>();
+    for (const id of this.selected) {
+      const e = this.battle.get(id);
+      if (!e || !e.alive) { this.selected.delete(id); continue; }
+      const p = toScreen(e.px + (e.x - e.px) * alpha, e.py + (e.y - e.py) * alpha);
+      const r = e.def.kind === 'tank' ? 20 : 11;
+      g.lineStyle(2, 0x7dff8a, 0.95);
+      g.strokeEllipse(p.sx, p.sy, r * 2, r);
+      if (e.order?.kind === 'attack') targets.add(e.order.targetId);
+      if (e.order?.kind === 'move') {
+        const m = toScreen(e.order.x, e.order.y);
+        g.lineStyle(1, 0x7dff8a, 0.35);
+        g.lineBetween(p.sx, p.sy, m.sx, m.sy);
+      }
+    }
+    for (const id of targets) {
+      const t = this.battle.get(id);
+      if (!t || !t.alive) continue;
+      g.lineStyle(2, 0xff4040, 0.95);
+      if (t.def.size > 0) g.strokePoints(pointsOf(footprintDiamond(t.tileX, t.tileY, t.def.size)), true);
+      else { const p = toScreen(t.x, t.y); g.strokeEllipse(p.sx, p.sy, 26, 13); }
+    }
+    if (this.box) {
+      const { x0, y0, x1, y1 } = this.box;
+      const x = Math.min(x0, x1), y = Math.min(y0, y1), w = Math.abs(x1 - x0), h = Math.abs(y1 - y0);
+      g.fillStyle(0x7dff8a, 0.08);
+      g.fillRect(x, y, w, h);
+      g.lineStyle(1, 0x7dff8a, 0.9);
+      g.strokeRect(x, y, w, h);
+    }
+  }
+
+  // ---------- 选择与命令 ----------
+
+  private commandable(): Entity[] {
+    return this.battle.living('player').filter(e => isMobile(e) && e.inside === null);
+  }
+
+  // 框选（世界像素矩形内的我方部队）或点选（离鼠标最近的一个）；add = 按住 Shift 追加
+  private selectAt(x0: number, y0: number, x1: number, y1: number, isBox: boolean, add: boolean): void {
+    if (!add) this.selected.clear();
+    if (isBox) {
+      const lx = Math.min(x0, x1), hx = Math.max(x0, x1), ly = Math.min(y0, y1), hy = Math.max(y0, y1);
+      for (const e of this.commandable()) {
+        const p = toScreen(e.x, e.y);
+        if (p.sx >= lx && p.sx <= hx && p.sy - 8 >= ly && p.sy - 8 <= hy) this.selected.add(e.id);
+      }
+    } else {
+      const hit = this.pickUnit(this.commandable(), x1, y1);
+      if (hit) {
+        if (add && this.selected.has(hit.id)) this.selected.delete(hit.id);
+        else this.selected.add(hit.id);
+      }
+    }
+    this.hud.render();
+  }
+
+  private pickUnit(units: Entity[], wx: number, wy: number): Entity | null {
+    let best: Entity | null = null, bestD = PICK_RADIUS;
+    for (const e of units) {
+      const p = toScreen(e.x, e.y);
+      const d = Math.hypot(p.sx - wx, p.sy - 8 - wy);
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    return best;
+  }
+
+  // 右键：点到敌人（兵或建筑占地）就集火，否则移动到该点
+  private command(wx: number, wy: number): void {
+    const ids = [...this.selected];
+    if (!ids.length) return;
+    const enemyUnits = this.battle.living('enemy').filter(e => isMobile(e) && e.inside === null);
+    let target = this.pickUnit(enemyUnits, wx, wy);
+    const w = toWorld(wx, wy), tx = Math.floor(w.x), ty = Math.floor(w.y);
+    if (!target) {
+      const grid = this.battle.grid;
+      const occ = grid.inBounds(tx, ty) ? grid.occupant[grid.idx(tx, ty)] : -1;
+      const b = occ === -1 ? undefined : this.battle.get(occ);
+      if (b && b.side === 'enemy' && b.alive) target = b;
+    }
+    if (target) {
+      this.battle.orderAttack(ids, target.id);
+      const p = toScreen(target.x, target.y);
+      this.effects.push({ kind: 'ring', x1: p.sx, y1: p.sy, x2: 0, y2: 0, r: 14, color: 0xff4040, t: 0.4, max: 0.4 });
+      return;
+    }
+    if (!this.battle.grid.isWalkable(tx, ty)) return;
+    this.battle.orderMove(ids, w.x, w.y);
+    this.effects.push({ kind: 'ring', x1: wx, y1: wy, x2: 0, y2: 0, r: 10, color: 0x7dff8a, t: 0.4, max: 0.4 });
+  }
+
   // ---------- 相机与输入 ----------
 
   private setupCamera(): void {
@@ -364,7 +476,7 @@ export class BattleScene extends Phaser.Scene {
     this.input.mouse?.disableContextMenu();
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT') as typeof this.keys;
-    kb.on('keydown-ESC', () => this.selectTool(null));
+    kb.on('keydown-ESC', () => { this.selectTool(null); this.clearSelection(); });
     kb.on('keydown-SPACE', () => { if (this.phase === 'battle') { this.paused = !this.paused; this.hud.render(); } });
 
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
@@ -375,12 +487,17 @@ export class BattleScene extends Phaser.Scene {
         cam.scrollX = this.dragFrom.scrollX - (p.x - this.dragFrom.x) / cam.zoom;
         cam.scrollY = this.dragFrom.scrollY - (p.y - this.dragFrom.y) / cam.zoom;
       }
+      if (this.box && p.leftButtonDown()) { this.box.x1 = p.worldX; this.box.y1 = p.worldY; }
     });
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (p.rightButtonDown()) {
         const cam = this.cameras.main;
         this.dragFrom = { x: p.x, y: p.y, scrollX: cam.scrollX, scrollY: cam.scrollY };
+        return;
+      }
+      if (this.phase === 'battle') {
+        this.box = { x0: p.worldX, y0: p.worldY, x1: p.worldX, y1: p.worldY, sx: p.x, sy: p.y };
         return;
       }
       if (!this.hover) return;
@@ -393,13 +510,26 @@ export class BattleScene extends Phaser.Scene {
     });
 
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      // 左键松开：完成框选或点选
+      if (p.button === 0 && this.box) {
+        const b = this.box;
+        this.box = null;
+        if (this.phase === 'battle') {
+          const isBox = Math.hypot(p.x - b.sx, p.y - b.sy) >= DRAG_THRESHOLD;
+          this.selectAt(b.x0, b.y0, p.worldX, p.worldY, isBox, p.event.shiftKey);
+        }
+        return;
+      }
       if (p.button !== 2 || !this.dragFrom) return;
       const moved = Math.hypot(p.x - this.dragFrom.x, p.y - this.dragFrom.y);
       this.dragFrom = null;
-      // 右键单击（没拖动）：取消工具或撤回单位
-      if (moved < 5 && this.phase === 'deploy' && this.hover) {
+      if (moved >= DRAG_THRESHOLD) return; // 那是在拖动视角
+      // 右键单击：部署时取消工具或撤回单位；交战时下命令
+      if (this.phase === 'deploy' && this.hover) {
         if (this.tool) this.selectTool(null);
         else if (this.deployment.removeAt(this.hover.x, this.hover.y)) this.hud.render();
+      } else if (this.phase === 'battle') {
+        this.command(p.worldX, p.worldY);
       }
     });
 

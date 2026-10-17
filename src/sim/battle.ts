@@ -7,6 +7,11 @@ export type Side = 'player' | 'enemy';
 export type Stance = 'hold' | 'assault'; // 驻守：只在驻地附近迎敌；出击：主动寻找敌人
 export type Outcome = 'victory' | 'defeat' | 'retreat';
 
+// 玩家下达的命令：移动到某点，或集火某个目标。完成后清空，恢复按姿态自动行动。
+export type Order =
+  | { kind: 'move'; x: number; y: number }
+  | { kind: 'attack'; targetId: number };
+
 export interface Entity {
   id: number;
   defId: DefId;
@@ -30,6 +35,7 @@ export interface Entity {
   alive: boolean;
   inside: number | null; // 步兵：驻防在哪座工事里
   garrison: number[]; // 工事：里面驻防的步兵
+  order: Order | null;
 }
 
 export type BattleEvent =
@@ -86,7 +92,7 @@ export class Battle {
       path: [], pathTargetKey: '', repathIn: 0,
       tileX: Math.floor(x), tileY: Math.floor(y),
       alive: true,
-      inside: null, garrison: [],
+      inside: null, garrison: [], order: null,
     };
     if (building) this.grid.setOccupant(e.tileX, e.tileY, def.size, e.id);
     this.entities.push(e);
@@ -132,14 +138,45 @@ export class Battle {
     if (this.started && !this.outcome) this.outcome = 'retreat';
   }
 
-  setStance(side: Side, stance: Stance): void {
+  // 改姿态：给了 ids 就只改这些单位；同时取消它们正在执行的命令
+  setStance(side: Side, stance: Stance, ids?: number[]): void {
+    const only = ids ? new Set(ids) : null;
     for (const e of this.entities) {
-      if (e.alive && e.side === side && isMobile(e) && e.inside === null) {
+      if (e.alive && e.side === side && isMobile(e) && e.inside === null && (!only || only.has(e.id))) {
         e.stance = stance;
+        e.order = null;
         // 改为驻守时，就地设为新驻地
         if (stance === 'hold') { e.postX = e.x; e.postY = e.y; }
       }
     }
+  }
+
+  // 移动命令：多支部队在目的地附近排开，到达后就地驻守
+  orderMove(ids: number[], x: number, y: number): void {
+    const units = ids.map(id => this.byId.get(id)).filter((u): u is Entity => !!u && this.commandable(u));
+    const spots = formation(units.length);
+    units.forEach((u, k) => {
+      const tx = x + spots[k].x, ty = y + spots[k].y;
+      const ok = this.grid.isWalkable(Math.floor(tx), Math.floor(ty));
+      u.order = { kind: 'move', x: ok ? tx : x, y: ok ? ty : y };
+      u.repathIn = 0;
+    });
+  }
+
+  // 集火命令：所有能伤到目标的武器优先打它
+  orderAttack(ids: number[], targetId: number): void {
+    const target = this.byId.get(targetId);
+    if (!target || !targetable(target)) return;
+    for (const id of ids) {
+      const u = this.byId.get(id);
+      if (!u || !this.commandable(u) || u.side === target.side || this.bestMult(u, target) <= 0) continue;
+      u.order = { kind: 'attack', targetId };
+      u.repathIn = 0;
+    }
+  }
+
+  private commandable(u: Entity): boolean {
+    return u.alive && isMobile(u) && u.inside === null;
   }
 
   drainEvents(): BattleEvent[] {
@@ -193,6 +230,11 @@ export class Battle {
   // 优先打克制倍率高的目标，同倍率打最近的
   private pickTarget(e: Entity, w: Weapon): Entity | null {
     const range = w.range + this.rangeBonus(e);
+    const forced = this.orderTarget(e);
+    if (forced && DAMAGE_MULT[w.type][forced.def.armor] > 0) {
+      const d = this.edgeDist(e, forced);
+      if (d <= range && !(w.minRange && d < w.minRange)) return forced;
+    }
     let best: Entity | null = null, bestScore = -Infinity;
     for (const o of this.entities) {
       if (o.side === e.side || !targetable(o)) continue;
@@ -254,8 +296,30 @@ export class Battle {
     return best;
   }
 
+  // 集火目标；目标已倒下则清掉命令
+  private orderTarget(e: Entity): Entity | null {
+    if (e.order?.kind !== 'attack') return null;
+    const t = this.byId.get(e.order.targetId);
+    if (t && targetable(t)) return t;
+    e.order = null;
+    if (e.stance === 'hold') { e.postX = e.x; e.postY = e.y; }
+    return null;
+  }
+
   private updateMovement(e: Entity): void {
-    const target = this.engageTarget(e);
+    const order = e.order;
+    if (order?.kind === 'move') {
+      if (Math.hypot(e.x - order.x, e.y - order.y) < 0.15) {
+        e.order = null;
+        e.stance = 'hold';
+        e.postX = e.x; e.postY = e.y;
+        e.path = [];
+        return;
+      }
+      this.goTo(e, { x: order.x, y: order.y }, `m${order.x},${order.y}`);
+      return;
+    }
+    const target = this.orderTarget(e) ?? this.engageTarget(e);
     let goal: Point | null = null, goalKey = '';
     if (target) {
       if (this.edgeDist(e, target) <= this.rangeVs(e, target) * 0.95) { e.path = []; return; }
@@ -266,15 +330,19 @@ export class Battle {
       goalKey = 'post';
     }
     if (!goal) { e.path = []; return; }
+    this.goTo(e, goal, goalKey);
+  }
 
+  private goTo(e: Entity, goal: Point, goalKey: string): void {
     e.repathIn -= Battle.DT;
     if (goalKey !== e.pathTargetKey || e.repathIn <= 0) {
       e.pathTargetKey = goalKey;
       e.repathIn = REPATH_SECONDS + this.rng.next() * 0.3;
       const path = this.grid.findPath(Math.floor(e.x), Math.floor(e.y), Math.floor(goal.x), Math.floor(goal.y));
       e.path = path ?? [];
-      // 最后一步走到精确位置
+      // 最后一步走到精确位置（目的地就在当前格时，路径为空，直接走过去）
       if (e.path.length) e.path[e.path.length - 1] = { x: goal.x, y: goal.y };
+      else if (path) e.path = [{ x: goal.x, y: goal.y }];
     }
     this.followPath(e);
   }
@@ -359,4 +427,17 @@ export class Battle {
       this.outcome = 'defeat';
     }
   }
+}
+
+// 移动命令的队形：以目的地为中心，按 0.6 格间距螺旋排开
+function formation(n: number): Point[] {
+  const spots: Point[] = [{ x: 0, y: 0 }];
+  for (let ring = 1; spots.length < n; ring++) {
+    for (let dy = -ring; dy <= ring; dy++) {
+      for (let dx = -ring; dx <= ring; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) === ring) spots.push({ x: dx * 0.6, y: dy * 0.6 });
+      }
+    }
+  }
+  return spots.slice(0, n);
 }

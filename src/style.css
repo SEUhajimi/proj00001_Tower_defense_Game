@@ -106,3 +106,4 @@ html, body {
 #hud .offline button { margin-top: 6px; text-align: center; }
 #hud .dev { margin-top: 10px; opacity: 0.7; }
 #hud .dev button { font-size: 12px; text-align: center; }
+#hud h3 .sel { color: var(--text); }

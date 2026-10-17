@@ -131,6 +131,71 @@ describe('碉堡与地堡', () => {
   });
 });
 
+describe('命令', () => {
+  it('移动：到达后就地驻守，多支部队排开不挤在一点', () => {
+    const battle = new Battle(new Grid(20, 20), new Rng(1));
+    const units = [0, 1, 2].map(k => battle.spawn('rifle', 'player', 2.5, 2.5 + k, 'assault'));
+    battle.spawn('rifle', 'enemy', 18.5, 18.5, 'hold'); // 远处的敌人，保证战斗不结束
+    battle.start();
+    battle.orderMove(units.map(u => u.id), 10.5, 10.5);
+    for (let i = 0; i < 600; i++) battle.step();
+    for (const u of units) {
+      expect(u.order).toBeNull();
+      expect(u.stance).toBe('hold');
+      expect(Math.hypot(u.x - 10.5, u.y - 10.5)).toBeLessThan(1.5);
+    }
+    const [a, b] = units;
+    expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(0.3);
+  });
+
+  it('集火：放着近处的步兵不打，专打指定的塔', () => {
+    const battle = new Battle(new Grid(20, 20), new Rng(1));
+    const me = battle.spawn('rifle', 'player', 5.5, 10.5, 'hold');
+    const near = battle.spawn('rifle', 'enemy', 7.5, 10.5, 'hold');
+    const tower = battle.spawn('atTower', 'enemy', 8, 12);
+    near.def = { ...near.def, weapons: [] };
+    tower.def = { ...tower.def, weapons: [] };
+    battle.start();
+    battle.orderAttack([me.id], tower.id);
+    for (let i = 0; i < 100; i++) battle.step();
+    expect(tower.hp).toBeLessThan(DEFS.atTower.hp);
+    expect(near.hp).toBe(100);
+  });
+
+  it('集火目标在射程外就走过去打', () => {
+    const battle = new Battle(new Grid(20, 20), new Rng(1));
+    const me = battle.spawn('rifle', 'player', 2.5, 10.5, 'hold');
+    const far = battle.spawn('rifle', 'enemy', 15.5, 10.5, 'hold');
+    far.def = { ...far.def, weapons: [] };
+    battle.start();
+    battle.orderAttack([me.id], far.id);
+    for (let i = 0; i < 400 && far.alive; i++) battle.step();
+    expect(far.alive).toBe(false);
+  });
+
+  it('目标倒下后命令清空，恢复自动行动', () => {
+    const battle = new Battle(new Grid(20, 20), new Rng(1));
+    const me = battle.spawn('tank2', 'player', 5.5, 10.5, 'hold');
+    const target = battle.spawn('rifle', 'enemy', 8.5, 10.5, 'hold');
+    battle.spawn('rifle', 'enemy', 18.5, 18.5, 'hold');
+    battle.start();
+    battle.orderAttack([me.id], target.id);
+    for (let i = 0; i < 200 && target.alive; i++) battle.step();
+    battle.step();
+    expect(target.alive).toBe(false);
+    expect(me.order).toBeNull();
+  });
+
+  it('打不动的目标不接受集火命令（只能对空的武器打不了坦克）', () => {
+    const battle = new Battle(new Grid(20, 20), new Rng(1));
+    const aa = battle.spawn('rifle', 'player', 5.5, 5.5);
+    aa.def = { ...aa.def, weapons: [{ dmg: 30, interval: 0.5, range: 8, type: 'aa' }] };
+    const tank = battle.spawn('tank1', 'enemy', 8.5, 5.5);
+    battle.orderAttack([aa.id], tank.id);
+    expect(aa.order).toBeNull();
+  });
+});
+
 describe('寻路', () => {
   it('部队可以直接穿过建筑', () => {
     const grid = new Grid(10, 10);
