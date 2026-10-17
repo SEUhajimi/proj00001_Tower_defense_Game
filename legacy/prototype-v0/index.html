@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>基地守卫</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="topbar">
+    <div class="brand">🏛 基地守卫</div>
+    <div class="res" title="国库资金（括号内为每日净收入）">💰 <b id="r-gold"></b> <small id="r-net"></small></div>
+    <div class="res" title="市民人口 / 住房上限">👥 <b id="r-pop"></b></div>
+    <div class="res" title="幸福度">😊 <b id="r-happy"></b></div>
+    <div class="res" title="电力 供给 / 需求">⚡ <b id="r-power"></b></div>
+    <div class="res" title="军需（战略物资）">📦 <b id="r-sup"></b></div>
+    <div class="res" title="科研产出">🔬 <b id="r-rp"></b></div>
+    <div class="res" title="现役部队">🪖 <b id="r-army"></b></div>
+    <div class="res" title="市政厅耐久">🏛 <b id="r-hall"></b></div>
+    <div class="spacer"></div>
+    <div class="wave" id="r-wave"></div>
+    <button id="btn-next">立即开战</button>
+    <button id="btn-pause">暂停</button>
+    <button id="btn-speed">1x</button>
+    <button id="btn-restart">重新开始</button>
+  </header>
+
+  <main>
+    <section id="field">
+      <canvas id="game"></canvas>
+      <div id="log"></div>
+    </section>
+    <aside id="hall">
+      <h2>市政厅</h2>
+      <nav id="tabs">
+        <button class="tab" data-tab="tech">🔬 科技部</button>
+        <button class="tab" data-tab="finance">💰 财政部</button>
+        <button class="tab" data-tab="civil">🏘 民政部</button>
+        <button class="tab" data-tab="defense">🛡 国防部</button>
+      </nav>
+      <div id="panel-body"></div>
+      <div id="selection"></div>
+    </aside>
+  </main>
+
+  <div id="modal">
+    <div class="modal-box">
+      <h1>🏛 基地守卫</h1>
+      <p>你是这座城市的市长。敌军将分 <b>20 波</b> 沿土路进攻市政厅，坚守到最后即可获胜。</p>
+      <ul>
+        <li><b>🔬 科技部</b>：建研究所、研发高级步兵、坦克、战斗机与新型防御塔。</li>
+        <li><b>💰 财政部</b>：调节税率、科研拨款，必要时发行战争债券。</li>
+        <li><b>🏘 民政部</b>：修建民居、市场、发电厂、公园，让人口增长。</li>
+        <li><b>🛡 国防部</b>：生产储备军需、建造防御塔、征兵并设定防线。</li>
+      </ul>
+      <p class="hint">士兵来自人口：征兵会减少纳税的市民，阵亡后由住房空位自然补充。经济、民心与军备要一起兼顾。</p>
+      <p class="hint">快捷键：空格 暂停 · Esc 取消 · 1–4 切换部门 · Shift+左键 连续建造</p>
+      <button id="btn-start">上任</button>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>

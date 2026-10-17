@@ -1,0 +1,194 @@
+import { DAMAGE_TYPE_NAME } from '../data/combat';
+import { DEFS, type DefId, type UnitDef } from '../data/units';
+import { isMobile, type Stance } from '../sim/battle';
+import type { BattleScene } from '../game/BattleScene';
+
+// 战斗界面右侧面板。阶段切换时 render() 重建结构，refresh() 定时刷新数字。
+
+const OUTCOME_TEXT = { victory: '胜利', defeat: '失败', retreat: '已撤退' } as const;
+
+export class Hud {
+  private root = document.getElementById('hud')!;
+  private timer: number;
+  private readonly onClick = (ev: Event) => {
+    const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-act]');
+    if (btn && !btn.disabled) this.act(btn.dataset.act!, btn.dataset.arg);
+  };
+
+  constructor(private scene: BattleScene) {
+    this.root.addEventListener('click', this.onClick);
+    this.timer = window.setInterval(() => this.refresh(), 200);
+  }
+
+  destroy(): void {
+    this.root.removeEventListener('click', this.onClick);
+    window.clearInterval(this.timer);
+    this.root.innerHTML = '';
+  }
+
+  private act(act: string, arg?: string): void {
+    const s = this.scene;
+    switch (act) {
+      case 'tool': s.selectTool(arg as DefId); break;
+      case 'stance': s.stance = arg as Stance; this.render(); break;
+      case 'auto': s.autoDeploy(); break;
+      case 'relaunch': s.relaunch(); break;
+      case 'start': s.startBattle(); break;
+      case 'all': s.setAllStance(arg as Stance); break;
+      case 'pause': s.paused = !s.paused; this.render(); break;
+      case 'speed': s.speed = s.speed >= 4 ? 1 : s.speed * 2; this.render(); break;
+      case 'retreat': s.retreat(); break;
+      case 'again': s.newBattle(); break;
+      case 'home': s.goHome(); break;
+    }
+  }
+
+  render(): void {
+    const s = this.scene;
+    if (!s.deployment) return;
+    const html: Record<typeof s.phase, () => string> = {
+      landing: () => this.landingHtml(),
+      deploy: () => this.deployHtml(),
+      battle: () => this.battleHtml(),
+      result: () => this.resultHtml(),
+    };
+    this.root.innerHTML = html[s.phase]();
+    this.refresh();
+  }
+
+  refresh(): void {
+    const s = this.scene;
+    if (!s.battle) return;
+    const set = (id: string, text: string) => {
+      const el = this.root.querySelector<HTMLElement>(`[data-v="${id}"]`);
+      if (el && el.textContent !== text) el.textContent = text;
+    };
+    const b = s.battle, d = s.deployment;
+    set('steel', String(d.budget.steel));
+    set('ammo', String(d.budget.ammo));
+    set('time', formatTime(b.time));
+    const mine = b.living('player'), theirs = b.living('enemy');
+    set('p-units', String(mine.filter(isMobile).length));
+    set('p-towers', String(mine.filter(e => !isMobile(e)).length));
+    set('e-units', String(theirs.filter(isMobile).length));
+    set('e-towers', String(theirs.filter(e => e.def.kind === 'tower' || e.def.kind === 'fort').length));
+    set('e-hq', b.hqDown.enemy ? '已摧毁（敌方伤害 -30%）' : '完好');
+  }
+
+  // ---------- 各阶段 ----------
+
+  private landingHtml(): string {
+    return `
+      <h2>选择投送地点</h2>
+      ${btn('home', '', '← 返回基地')}
+      <p>战场就是敌方基地。着色的格子是没有建筑、可以投送兵力的空地，点击一块，以它为中心建立营地。</p>
+      <p class="legend">被几座敌方塔的射程覆盖：
+        <span style="color:#7dff8a">■ 0</span>
+        <span style="color:#ffe14a">■ 1</span>
+        <span style="color:#ff9a3c">■ 2</span>
+        <span style="color:#ff4d4d">■ 3+</span></p>
+      ${this.helpHtml()}`;
+  }
+
+  private deployHtml(): string {
+    const s = this.scene, d = s.deployment;
+    const towerBtns = d.buildings.map(id => {
+      const def: UnitDef = DEFS[id];
+      const money = d.affordable(id);
+      return btn('tool', id, `${def.name}<small>钢 ${def.cost?.steel ?? 0} · 弹 ${def.cost?.ammo ?? 0}</small>`,
+        { active: s.tool === id, disabled: money !== true, title: money === true ? unitTip(def) : money });
+    }).join('');
+    const unitBtns = (Object.entries(d.roster) as [DefId, number][]).map(([id, n]) => {
+      const def: UnitDef = DEFS[id];
+      return btn('tool', id, `${def.name}<small>剩 ${n}</small>`, { active: s.tool === id, disabled: n <= 0, title: unitTip(def) });
+    }).join('');
+    const anyUnit = d.placed().some(e => e.def.speed > 0);
+    return `
+      <h2>部署营地</h2>
+      <div class="budget">物资　钢铁 <b data-v="steel"></b>　弹药 <b data-v="ammo"></b></div>
+      <h3>建造防御塔与工事</h3>
+      <div class="grid">${towerBtns}</div>
+      <h3>部署部队</h3>
+      <div class="grid">${unitBtns}</div>
+      <h3>新部署部队的姿态</h3>
+      <div class="row">
+        ${btn('stance', 'assault', '出击', { active: s.stance === 'assault', title: '主动寻找敌人' })}
+        ${btn('stance', 'hold', '驻守', { active: s.stance === 'hold', title: '只迎击驻地附近的敌人' })}
+      </div>
+      <div class="row actions">
+        ${btn('auto', '', '一键布置')}
+        ${btn('relaunch', '', '重选投送点')}
+      </div>
+      ${btn('start', '', '开战', { primary: true, disabled: !anyUnit, title: anyUnit ? '' : '至少部署一支可移动部队' })}
+      <p class="hint">左键放置 · 右键单击撤回 · 把步兵放到碉堡/地堡上即进驻</p>
+      <p class="hint">克制：机枪克步兵，穿甲克坦克，爆破克建筑和工事，火炮克密集部队</p>
+      ${this.helpHtml()}`;
+  }
+
+  private battleHtml(): string {
+    const s = this.scene;
+    return `
+      <h2>交战中 <span class="time" data-v="time"></span></h2>
+      <table class="stats">
+        <tr><th></th><th>部队</th><th>塔与工事</th></tr>
+        <tr><td class="me">我方</td><td data-v="p-units"></td><td data-v="p-towers"></td></tr>
+        <tr><td class="foe">敌方</td><td data-v="e-units"></td><td data-v="e-towers"></td></tr>
+      </table>
+      <p>敌方指挥部：<b data-v="e-hq"></b></p>
+      <h3>指挥全军</h3>
+      <div class="row">
+        ${btn('all', 'assault', '全军出击')}
+        ${btn('all', 'hold', '全军驻守')}
+      </div>
+      <h3>战斗控制</h3>
+      <div class="row">
+        ${btn('pause', '', s.paused ? '继续' : '暂停')}
+        ${btn('speed', '', `速度 ${s.speed}x`)}
+      </div>
+      ${btn('retreat', '', '撤退（拿不到掠夺）', { danger: true })}
+      ${this.helpHtml()}`;
+  }
+
+  private resultHtml(): string {
+    const s = this.scene, b = s.battle;
+    const outcome = b.outcome ?? 'retreat';
+    const alive: Partial<Record<DefId, number>> = {};
+    for (const e of b.living('player')) alive[e.defId] = (alive[e.defId] ?? 0) + 1;
+    const rows = (Object.entries(s.deployedCounts) as [DefId, number][]).map(([id, n]) =>
+      `<tr><td>${DEFS[id].name}</td><td>${n}</td><td>${n - (alive[id] ?? 0)}</td></tr>`).join('');
+    const note = outcome === 'victory'
+      ? '敌方基地已被攻破。掠夺 50% 资源将在阶段 3 接入。'
+      : outcome === 'defeat' ? '我方可移动部队全军覆没。' : '部队已撤回，剩余部队保留，拿不到掠夺。';
+    return `
+      <h2 class="outcome ${outcome}">${OUTCOME_TEXT[outcome]}</h2>
+      <p>用时 ${formatTime(b.time)}。${note}</p>
+      <table class="stats">
+        <tr><th>我方单位</th><th>投入</th><th>损失</th></tr>
+        ${rows}
+      </table>
+      ${btn('again', '', '再来一局（新地图）', { primary: true })}
+      ${btn('home', '', '← 返回基地')}`;
+  }
+
+  private helpHtml(): string {
+    return '<p class="hint">右键拖动或 WASD 移动视角 · 滚轮缩放 · 空格暂停 · Esc 取消选择</p>';
+  }
+}
+
+function btn(act: string, arg: string, label: string,
+  o: { active?: boolean; disabled?: boolean; primary?: boolean; danger?: boolean; title?: string } = {}): string {
+  const cls = [o.active && 'active', o.primary && 'primary', o.danger && 'danger'].filter(Boolean).join(' ');
+  return `<button data-act="${act}" data-arg="${arg}" class="${cls}" ${o.disabled ? 'disabled' : ''} title="${o.title ?? ''}">${label}</button>`;
+}
+
+function unitTip(def: UnitDef): string {
+  if (def.kind === 'fort') return `血量 ${def.hp} · 可驻防 ${def.capacity} 名步兵，射程 +${def.rangeBonus}
+驻防步兵打不到，工事被毁后弹出`;
+  const w = def.weapons.map(w => `${DAMAGE_TYPE_NAME[w.type]} ${w.dmg}/${w.interval}秒 射程${w.range}`).join('；');
+  return `血量 ${def.hp}${def.speed ? ` · 移速 ${def.speed}` : ''}\n${w}`;
+}
+
+function formatTime(t: number): string {
+  const s = Math.floor(t);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}

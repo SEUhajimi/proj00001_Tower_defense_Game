@@ -1,0 +1,108 @@
+:root {
+  --bg: #12161c;
+  --panel: #1b2129;
+  --card: #262f3a;
+  --line: #313c49;
+  --text: #dfe6ee;
+  --muted: #8a96a3;
+  --accent: #3d8bfd;
+  --danger: #c84848;
+  --me: #5fb0ff;
+  --foe: #ff6a6a;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  overflow: hidden;
+}
+
+#app { display: flex; height: 100%; }
+#game { flex: 1; min-width: 0; position: relative; }
+
+#hud {
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  padding: 14px 16px;
+  overflow-y: auto;
+  user-select: none;
+}
+#hud h2 { margin: 0 0 10px; font-size: 18px; }
+#hud h3 { margin: 14px 0 6px; font-size: 12px; color: var(--muted); font-weight: normal; }
+#hud p { margin: 6px 0; }
+#hud .hint { color: var(--muted); font-size: 12px; margin-top: 12px; }
+#hud .time { color: var(--muted); font-weight: normal; font-size: 14px; margin-left: 6px; }
+
+#hud .budget {
+  background: var(--card);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+#hud .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+#hud .row { display: flex; gap: 6px; }
+#hud .row > button { flex: 1; }
+#hud .actions { margin: 14px 0 8px; }
+
+#hud button {
+  display: block;
+  width: 100%;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+#hud button small { display: block; color: var(--muted); font-size: 11px; }
+#hud button:hover:not(:disabled) { border-color: var(--accent); }
+#hud button.active { border-color: var(--accent); background: #24406a; }
+#hud button.primary { background: var(--accent); text-align: center; font-weight: bold; margin-top: 8px; }
+#hud button.danger { background: var(--danger); text-align: center; margin-top: 10px; }
+#hud button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+#hud table.stats { width: 100%; border-collapse: collapse; margin: 8px 0; }
+#hud table.stats th { color: var(--muted); font-weight: normal; font-size: 12px; text-align: left; }
+#hud table.stats td, #hud table.stats th { padding: 3px 4px; border-bottom: 1px solid var(--line); }
+#hud .me { color: var(--me); }
+#hud .foe { color: var(--foe); }
+
+#hud .outcome { font-size: 26px; }
+#hud .outcome.victory { color: #6fe08a; }
+#hud .outcome.defeat { color: var(--foe); }
+#hud .outcome.retreat { color: #ffc040; }
+
+/* ---------- 基地模式 ---------- */
+#hud .resgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; font-size: 12px; }
+#hud .resgrid .res { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
+#hud .resgrid .res span { color: var(--muted); min-width: 30px; }
+#hud .resgrid .res b { font-weight: normal; font-variant-numeric: tabular-nums; }
+#hud .resgrid .res b.full { color: #ffc040; }
+#hud .resgrid .res small { font-size: 11px; }
+#hud .pos { color: #6fe08a; }
+#hud .neg { color: var(--foe); }
+#hud .vitals { display: flex; justify-content: space-between; font-size: 12px; margin: 8px 0; padding: 6px 8px; background: var(--card); border-radius: 6px; }
+#hud .vitals b { font-weight: normal; }
+#hud nav.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 10px; }
+#hud nav.tabs button { text-align: center; padding: 5px 0; }
+#hud .tabbody { margin-top: 6px; }
+#hud .tabbody > button { margin-bottom: 5px; }
+#hud .count { color: var(--accent); font-weight: normal; font-size: 12px; }
+#hud small.cost { color: #ffc040; }
+#hud .slider { display: block; background: var(--card); border-radius: 6px; padding: 6px 10px; font-size: 12px; }
+#hud .slider input { width: 100%; }
+#hud .selection { margin-top: 12px; padding: 8px 10px; background: var(--card); border-radius: 6px; border: 1px solid var(--line); }
+#hud .msg { color: var(--foe); min-height: 1em; margin: 6px 0 0; font-size: 12px; }
+#hud .offline { background: #24406a; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; font-size: 12px; }
+#hud .offline button { margin-top: 6px; text-align: center; }
+#hud .dev { margin-top: 10px; opacity: 0.7; }
+#hud .dev button { font-size: 12px; text-align: center; }
