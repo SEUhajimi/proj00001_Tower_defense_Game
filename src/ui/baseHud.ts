@@ -39,12 +39,17 @@ export class BaseHud {
   private readonly onInput = (ev: Event) => {
     const el = ev.target as HTMLInputElement;
     if (el.dataset.input === 'tax') { this.scene.setTax(Number(el.value) / 100); this.refresh(); }
+    if (el.dataset.input === 'saveFile' && ev.type === 'change' && el.files?.[0]) {
+      el.files[0].text().then(t => this.scene.importSave(t));
+      el.value = '';
+    }
     if (el.dataset.drill) this.drill[el.dataset.drill as DefId] = Math.max(0, Math.min(99, Math.floor(Number(el.value) || 0)));
   };
 
   constructor(private scene: BaseScene) {
     this.root.addEventListener('click', this.onClick);
     this.root.addEventListener('input', this.onInput);
+    this.root.addEventListener('change', this.onInput);
     this.timer = window.setInterval(() => this.refresh(), 500);
     this.render();
   }
@@ -52,6 +57,7 @@ export class BaseHud {
   destroy(): void {
     this.root.removeEventListener('click', this.onClick);
     this.root.removeEventListener('input', this.onInput);
+    this.root.removeEventListener('change', this.onInput);
     window.clearInterval(this.timer);
     this.root.innerHTML = '';
   }
@@ -73,6 +79,8 @@ export class BaseHud {
       case 'drillClear': this.drill = {}; this.render(); break;
       case 'drill': s.startDrill(this.drill); break;
       case 'sortie': s.startSortie(this.readRoster()); break;
+      case 'exportSave': s.exportSave(); break;
+      case 'importSave': this.root.querySelector<HTMLInputElement>('input[data-input="saveFile"]')?.click(); break;
       case 'ff': s.fastForward(1); break;
       case 'reset': if (confirm('清空存档，重新开局？')) s.resetSave(); break;
     }
@@ -104,6 +112,9 @@ export class BaseHud {
       ${this.selectionHtml()}
       <p class="msg" data-v="msg"></p>
       <p class="hint">左键选择/放置 · Shift+左键连续建造 · 右键取消 · 右键拖动或 WASD 移动视角 · 滚轮缩放</p>
+      <div class="row save">${btn('exportSave', '', '导出存档')}${btn('importSave', '', '导入存档')}
+        <input type="file" accept=".json,application/json" data-input="saveFile" hidden></div>
+      <p class="hint">游戏自动保存在浏览器里。导出的存档文件可以备份，或换台电脑导入继续玩；导入会覆盖当前进度。</p>
       ${import.meta.env.DEV ? `<div class="row dev">${btn('ff', '', '调试：快进 1 小时')}${btn('proto', '', '战斗原型')}${btn('reset', '', '重置存档', { danger: true })}</div>` : ''}`;
     this.refresh();
   }

@@ -10,8 +10,9 @@ import type { AiBase } from '../sim/world/ai';
 import { createDrill } from '../sim/world/drill';
 import { save, session } from './session';
 import { Hud } from '../ui/hud';
-import { footprintDiamond, pointsOf, TILE_H, tileDiamond, toScreen, toWorld } from './iso';
-import { BASE_INSET, CUBE_HEIGHT, makeBaseTextures, makeTextures, PLANE_ALT, textureKey } from './textures';
+import { footprintDiamond, pointsOf, TILE_H, TILE_W, tileDiamond, toScreen, toWorld } from './iso';
+import { FX_EXPLOSION, FX_SMOKE, ROCK_KEYS, texLift, texScale } from './art';
+import { BASE_INSET, makeBaseTextures, makeTextures, PLANE_ALT, SIDE_COLOR, textureKey } from './textures';
 
 export type Phase = 'deploy' | 'battle' | 'result';
 
@@ -26,12 +27,14 @@ export interface BattleInit {
 const AI_TINT = 0xff9a9a;
 
 interface Effect {
-  kind: 'line' | 'ring';
+  kind: 'line' | 'ring' | 'anim';
   x1: number; y1: number; x2: number; y2: number;
   r: number;
   color: number;
   t: number;
   max: number;
+  img?: Phaser.GameObjects.Image; // anim：逐帧播放的爆炸
+  frames?: string[];
 }
 
 const SHOT_COLOR: Record<DamageType, number> = {
@@ -70,6 +73,7 @@ export class BattleScene extends Phaser.Scene {
   private zone!: Phaser.GameObjects.Graphics;
   private ghost!: Phaser.GameObjects.Graphics;
   private overlay!: Phaser.GameObjects.Graphics;
+  private marks!: Phaser.GameObjects.Graphics; // 地面上的阵营圈和飞机影子
   private effects: Effect[] = [];
   private hover: { x: number; y: number } | null = null;
   private dragFrom: { x: number; y: number; scrollX: number; scrollY: number } | null = null;
@@ -100,6 +104,7 @@ export class BattleScene extends Phaser.Scene {
     this.terrain = this.add.graphics().setDepth(-1000);
     this.zone = this.add.graphics().setDepth(-999);
     this.ghost = this.add.graphics().setDepth(-998);
+    this.marks = this.add.graphics().setDepth(-500);
     this.overlay = this.add.graphics().setDepth(1e6);
     this.setupInput();
     this.hud = new Hud(this);
@@ -118,6 +123,7 @@ export class BattleScene extends Phaser.Scene {
     this.sprites.clear();
     for (const r of this.rocks) r.destroy();
     this.rocks = [];
+    for (const fx of this.effects) fx.img?.destroy();
     this.effects = [];
     this.report = null;
     this.annexed = false;
@@ -250,6 +256,7 @@ export class BattleScene extends Phaser.Scene {
 
     const alpha = this.phase === 'battle' && !this.paused ? Math.min(1, this.acc / Battle.DT) : 1;
     this.syncSprites(alpha);
+    this.drawMarks(alpha);
     this.updateEffects(deltaMs / 1000);
     this.drawOverlay(alpha);
     this.drawGhost();
@@ -266,18 +273,35 @@ export class BattleScene extends Phaser.Scene {
         this.effects.push({ kind: 'line', x1: p.x, y1: p.y, x2: q.x, y2: q.y - lift, r: 0, color: SHOT_COLOR[ev.dmgType], t: 0.08, max: 0.08 });
       } else if (ev.type === 'boom') {
         const p = this.screenPos(ev.x, ev.y);
-        this.effects.push({ kind: 'ring', x1: p.x, y1: p.y, x2: 0, y2: 0, r: ev.r * TILE_H, color: 0xffa040, t: 0.35, max: 0.35 });
+        this.anim(FX_EXPLOSION, p.x, p.y, Math.max(28, ev.r * TILE_W * 0.9), 0.4);
       } else if (ev.type === 'death') {
         const e = byId(ev.id);
         if (!e) continue;
         const p = this.screenPos(e.x, e.y);
-        const big = e.def.size > 0 || e.def.kind === 'tank';
-        this.effects.push({ kind: 'ring', x1: p.x, y1: p.y, x2: 0, y2: 0, r: big ? 28 : 10, color: big ? 0xff5030 : 0xcccccc, t: 0.5, max: 0.5 });
+        const big = e.def.size > 0 || e.def.kind === 'tank' || isAir(e);
+        if (big) this.anim(FX_SMOKE, p.x, p.y - (isAir(e) ? PLANE_ALT : 10), e.def.size > 0 ? e.def.size * 40 : 40, 0.7);
+        else this.effects.push({ kind: 'ring', x1: p.x, y1: p.y, x2: 0, y2: 0, r: 10, color: 0xcccccc, t: 0.5, max: 0.5 });
       }
     }
   }
 
+  // 爆炸、烟雾：逐帧换图，播完删除
+  private anim(frames: string[], x: number, y: number, size: number, dur: number): void {
+    const img = this.add.image(x, y - size * 0.3, frames[0]).setDepth(1e5);
+    img.setScale(size / img.width);
+    this.effects.push({ kind: 'anim', x1: x, y1: y, x2: 0, y2: 0, r: 0, color: 0, t: dur, max: dur, img, frames });
+  }
+
   // ---------- 绘制 ----------
+
+  private texKeyOf(e: Entity): string {
+    return e.skin ? `bb-${e.skin}` : textureKey(e.defId, e.side);
+  }
+
+  // 建筑顶面离地面多高（显示像素）：放炮管、血条、驻防人数用
+  private liftOf(e: Entity, fallback = 24): number {
+    return texLift(this.texKeyOf(e), fallback);
+  }
 
   private screenPos(x: number, y: number): Phaser.Math.Vector2 {
     const { sx, sy } = toScreen(x, y);
@@ -287,7 +311,7 @@ export class BattleScene extends Phaser.Scene {
   private muzzle(e: Entity): Phaser.Math.Vector2 {
     const p = this.screenPos(e.x, e.y);
     const fort = e.inside !== null ? this.battle.get(e.inside) : undefined;
-    const lift = fort ? (CUBE_HEIGHT[fort.defId] ?? 16) : e.def.size > 0 ? (CUBE_HEIGHT[e.defId] ?? 24) : 12;
+    const lift = fort ? this.liftOf(fort, 16) : e.def.size > 0 ? this.liftOf(e) : 8;
     p.y -= lift;
     return p;
   }
@@ -295,7 +319,7 @@ export class BattleScene extends Phaser.Scene {
   private drawTerrain(): void {
     const g = this.terrain;
     g.clear();
-    const grass = [0x4f7d36, 0x55843a, 0x4a7633];
+    const grass = [0x8ab549, 0x85b045, 0x8fba4d];
     for (let ty = 0; ty < this.mapH; ty++) {
       for (let tx = 0; tx < this.mapW; tx++) {
         const n = (tx * 7 + ty * 13 + ((tx * ty) % 5)) % 3;
@@ -303,7 +327,8 @@ export class BattleScene extends Phaser.Scene {
         g.fillPoints(pointsOf(tileDiamond(tx, ty)), true);
         if (this.battle.grid.rock[this.battle.grid.idx(tx, ty)]) {
           const c = toScreen(tx + 0.5, ty + 0.5);
-          const rock = this.add.image(c.sx, c.sy + TILE_H * 0.35, 'rock').setOrigin(0.5, 1).setDepth(tx + ty + 1);
+          const rock = this.add.image(c.sx, c.sy + TILE_H / 2, ROCK_KEYS[(tx + ty) % ROCK_KEYS.length]).setOrigin(0.5, 1).setDepth(tx + ty + 1);
+          rock.setScale(TILE_W / rock.width);
           this.rocks.push(rock);
         }
       }
@@ -368,12 +393,10 @@ export class BattleScene extends Phaser.Scene {
         continue;
       }
       if (!s) {
-        s = this.add.image(0, 0, e.skin ? `bb-${e.skin}` : textureKey(e.defId, e.side));
+        const key = this.texKeyOf(e);
+        s = this.add.image(0, 0, key).setScale(texScale(key));
         if (e.skin && e.side === 'enemy') s.setTint(AI_TINT);
-        if (e.def.size > 0) s.setOrigin(0.5, 1);
-        else if (isAir(e)) s.setOrigin(0.5, 0.5);
-        else if (e.def.kind === 'tank') s.setOrigin(0.5, 1);
-        else s.setOrigin(0.5, 21 / 24);
+        s.setOrigin(0.5, e.def.size > 0 ? 1 : 0.5);
         this.sprites.set(e.id, s);
       }
       const x = e.px + (e.x - e.px) * alpha, y = e.py + (e.y - e.py) * alpha;
@@ -387,12 +410,12 @@ export class BattleScene extends Phaser.Scene {
         s.setRotation(Math.atan2(d.sy, d.sx));
         s.setDepth(5000 + x + y);
         continue;
-      } else if (e.def.kind === 'tank') {
-        s.setPosition(p.sx, p.sy + s.width / 4);
-        // 只区分朝屏幕左还是右
-        s.setFlipX(Math.cos(e.facing) - Math.sin(e.facing) < 0);
       } else {
-        s.setPosition(p.sx, p.sy);
+        // 坦克、士兵是俯视图，按屏幕上的朝向旋转；坦克贴图朝上，士兵贴图朝右
+        const d = toScreen(Math.cos(e.facing), Math.sin(e.facing));
+        const a = Math.atan2(d.sy, d.sx);
+        s.setPosition(p.sx, p.sy - (e.def.kind === 'tank' ? 4 : 6));
+        s.setRotation(e.def.kind === 'tank' ? a + Math.PI / 2 : a);
       }
       s.setDepth(x + y);
     }
@@ -403,8 +426,33 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private updateEffects(dt: number): void {
-    for (const fx of this.effects) fx.t -= dt;
+    for (const fx of this.effects) {
+      fx.t -= dt;
+      if (fx.img && fx.frames) {
+        if (fx.t <= 0) { fx.img.destroy(); continue; }
+        const k = Math.min(fx.frames.length - 1, Math.floor((1 - fx.t / fx.max) * fx.frames.length));
+        fx.img.setTexture(fx.frames[k]);
+      }
+    }
     this.effects = this.effects.filter(fx => fx.t > 0);
+  }
+
+  // 地面层：每个单位脚下的阵营色圈、飞机的影子
+  private drawMarks(alpha: number): void {
+    const g = this.marks;
+    g.clear();
+    for (const e of this.battle.entities) {
+      if (!e.alive || e.inside !== null || e.def.size > 0) continue;
+      const p = toScreen(e.px + (e.x - e.px) * alpha, e.py + (e.y - e.py) * alpha);
+      if (isAir(e)) {
+        g.fillStyle(0x000000, 0.22);
+        g.fillEllipse(p.sx, p.sy, e.def.kind === 'bomber' ? 30 : 18, e.def.kind === 'bomber' ? 12 : 7);
+        continue;
+      }
+      const r = e.def.kind === 'tank' ? 18 : 9;
+      g.fillStyle(SIDE_COLOR[e.side], 0.45);
+      g.fillEllipse(p.sx, p.sy, r * 2, r);
+    }
   }
 
   private drawOverlay(alpha: number): void {
@@ -417,21 +465,16 @@ export class BattleScene extends Phaser.Scene {
       const p = toScreen(x, y);
       // 塔炮管
       if (e.def.kind === 'tower') {
-        const top = p.sy - (CUBE_HEIGHT[e.defId] ?? 24) + 6;
+        const top = p.sy - this.liftOf(e) + 4;
         const dir = toScreen(Math.cos(e.facing), Math.sin(e.facing));
         const len = Math.hypot(dir.sx, dir.sy) || 1;
         g.lineStyle(e.defId === 'cannonTower' ? 5 : 3, 0x2a2f36);
         g.lineBetween(p.sx, top, p.sx + (dir.sx / len) * 16, top + (dir.sy / len) * 16);
       }
       if (e.inside !== null) continue;
-      // 飞机的影子
-      if (isAir(e)) {
-        g.fillStyle(0x000000, 0.25);
-        g.fillEllipse(p.sx, p.sy, e.def.kind === 'bomber' ? 30 : 18, e.def.kind === 'bomber' ? 12 : 7);
-      }
       // 工事上方：驻防人数
       if (e.def.kind === 'fort') {
-        const cap = e.def.capacity ?? 0, y0 = p.sy - (CUBE_HEIGHT[e.defId] ?? 16) - 10;
+        const cap = e.def.capacity ?? 0, y0 = p.sy - this.liftOf(e, 16) - 14;
         for (let k = 0; k < cap; k++) {
           const cx = p.sx + (k - (cap - 1) / 2) * 8;
           g.fillStyle(k < e.garrison.length ? (e.side === 'player' ? 0x5fb0ff : 0xff5a5a) : 0x000000, k < e.garrison.length ? 1 : 0.35);
@@ -441,7 +484,7 @@ export class BattleScene extends Phaser.Scene {
       // 血条
       if (e.hp < e.def.hp) {
         const w = e.def.kind === 'hq' ? 80 : e.def.size > 0 || e.def.kind === 'tank' ? 34 : 18;
-        const lift = e.def.size > 0 ? (CUBE_HEIGHT[e.defId] ?? 24) + 18 : isAir(e) ? PLANE_ALT + 18 : 26;
+        const lift = e.def.size > 0 ? this.liftOf(e) + 22 : isAir(e) ? PLANE_ALT + 18 : 22;
         const bx = p.sx - w / 2, by = p.sy - lift;
         g.fillStyle(0x000000, 0.6);
         g.fillRect(bx - 1, by - 1, w + 2, 5);

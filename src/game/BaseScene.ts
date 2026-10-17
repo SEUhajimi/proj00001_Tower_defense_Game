@@ -8,18 +8,27 @@ import { aiRect, generateAiLayout, isProtected, type AiBase } from '../sim/world
 import { canSortie, type Roster } from '../sim/world/sortie';
 import { BaseHud } from '../ui/baseHud';
 import { footprintDiamond, pointsOf, TILE_H, TILE_W, tileDiamond, toScreen, toWorld } from './iso';
-import { resetSession, save, session } from './session';
-import { BASE_CUBE_H, BASE_INSET, makeBaseTextures } from './textures';
+import { downloadSave, loadSaveText, resetSession, save, session } from './session';
+import { ROCK_KEYS, texLift, texScale, TREE_KEYS } from './art';
+import { BASE_INSET, makeBaseTextures } from './textures';
 
 export type BaseMode = 'idle' | 'build' | 'move' | 'buyLand';
 
+// 地面颜色取自 Kenney 素材的配色
 const TERRAIN_COLOR: Record<Terrain, [number, number]> = {
-  plain: [0x5b8a3a, 0x568436],
-  forest: [0x2f6b2f, 0x2b632b],
-  mountain: [0x8a8273, 0x837b6c],
-  iron: [0x8f5a43, 0x895540],
-  oil: [0x3c3f4a, 0x383b46],
+  plain: [0x8ab549, 0x85b045],
+  forest: [0x6f9a3c, 0x6a953a],
+  mountain: [0xb3ab95, 0xaba38c],
+  iron: [0xba8c5d, 0xb48759],
+  oil: [0x5a5d66, 0x55585f],
 };
+
+// 森林和山地上的树、石头：占 2×2 格，盖了建筑的地方隐藏
+interface Prop {
+  img: Phaser.GameObjects.Image;
+  x: number;
+  y: number;
+}
 
 const AI_TINT = 0xff8a80; // AI 基地的建筑偏红
 
@@ -40,6 +49,7 @@ export class BaseScene extends Phaser.Scene {
 
   private sprites = new Map<number, Sprite>();
   private aiSprites: Phaser.GameObjects.GameObject[] = [];
+  private props: Prop[] = [];
   private fog!: Phaser.GameObjects.Graphics;
   private ghost!: Phaser.GameObjects.Graphics;
   private priceTags: Phaser.GameObjects.Text[] = [];
@@ -64,8 +74,11 @@ export class BaseScene extends Phaser.Scene {
     // 离线收益只在打开游戏后第一次进入基地时显示
     this.offline = s.offline && s.offline.hours > 1 / 60 ? s.offline : null;
     s.offline = null;
+    this.message = s.notice ?? '';
+    s.notice = null;
     this.sprites = new Map();
     this.aiSprites = [];
+    this.props = [];
     this.priceTags = [];
     this.mode = 'idle';
     this.tool = null;
@@ -154,6 +167,21 @@ export class BaseScene extends Phaser.Scene {
     this.hud.refresh();
   }
 
+  exportSave(): void {
+    downloadSave();
+    this.message = '存档已导出';
+    this.hud.render();
+  }
+
+  // 导入存档文件：覆盖当前进度，重新进入基地
+  importSave(text: string): void {
+    const r = loadSaveText(text);
+    if (r !== true) { this.message = `导入失败：${r}`; this.hud.render(); return; }
+    this.discardSave = true;
+    session().notice = '存档已导入';
+    this.scene.restart();
+  }
+
   resetSave(): void {
     this.discardSave = true;
     resetSession();
@@ -209,15 +237,10 @@ export class BaseScene extends Phaser.Scene {
         const x0 = px * PLOT_SIZE, y0 = py * PLOT_SIZE;
         g.fillStyle(TERRAIN_COLOR[t][(px + py) & 1]);
         g.fillPoints(pointsOf(footprintDiamond(x0, y0, PLOT_SIZE)), true);
+        if (t === 'forest' || t === 'mountain') this.addProps(t, px, py);
         for (const [dx, dy] of [[0.9, 1.1], [2.6, 0.8], [1.4, 2.7], [3.1, 2.9]]) {
           const c = toScreen(x0 + dx, y0 + dy);
-          if (t === 'forest') {
-            g.fillStyle(0x1d4a1d);
-            g.fillTriangle(c.sx, c.sy - 14, c.sx - 7, c.sy + 2, c.sx + 7, c.sy + 2);
-          } else if (t === 'mountain' && dx > 1) {
-            g.fillStyle(0x6c6558);
-            g.fillTriangle(c.sx, c.sy - 12, c.sx - 12, c.sy + 4, c.sx + 12, c.sy + 4);
-          } else if (t === 'iron' || t === 'oil') {
+          if (t === 'iron' || t === 'oil') {
             g.fillStyle(t === 'iron' ? 0xc07a52 : 0x15161a);
             g.fillEllipse(c.sx, c.sy, 12, 6);
           }
@@ -231,6 +254,20 @@ export class BaseScene extends Phaser.Scene {
       const c = toScreen(0, i * PLOT_SIZE), d = toScreen(REGION_TILES, i * PLOT_SIZE);
       g.lineBetween(c.sx, c.sy, d.sx, d.sy);
     }
+  }
+
+  // 森林铺满四块树林，山地放两堆石头（AI 基地的地上不放）
+  private addProps(t: Terrain, px: number, py: number): void {
+    if (this.base.aiAtPlot(py * REGION_PLOTS + px)) return;
+    const spots = t === 'forest' ? [[0, 0], [2, 0], [0, 2], [2, 2]] : (px + py) % 2 ? [[0, 0], [2, 2]] : [[2, 0], [0, 2]];
+    const pool = t === 'forest' ? TREE_KEYS : ROCK_KEYS;
+    spots.forEach(([dx, dy], k) => {
+      const x = px * PLOT_SIZE + dx, y = py * PLOT_SIZE + dy;
+      const c = toScreen(x + 1, y + 1);
+      const img = this.add.image(c.sx, c.sy + TILE_H, pool[(px * 7 + py * 3 + k) % pool.length]).setOrigin(0.5, 1);
+      img.setScale((TILE_W * 2) / img.width).setDepth(x + y + 2);
+      this.props.push({ img, x, y });
+    });
   }
 
   // 自家领地画格子线并描边，领地外压暗，AI 领地染红；买地模式下高亮可买的地块并标价
@@ -292,7 +329,7 @@ export class BaseScene extends Phaser.Scene {
 
   private buildingSprite(defId: BaseBuildingId, x: number, y: number, tint?: number): Sprite {
     const d = baseDef(defId);
-    const img = this.add.image(0, 0, `bb-${defId}`).setOrigin(0.5, 1);
+    const img = this.add.image(0, 0, `bb-${defId}`).setOrigin(0.5, 1).setScale(texScale(`bb-${defId}`));
     const label = this.add.text(0, 0, d.icon, {
       fontFamily: 'Microsoft YaHei, sans-serif', fontSize: d.size >= 2 ? '20px' : '15px', fontStyle: 'bold', color: '#1d2229',
     }).setOrigin(0.5);
@@ -304,7 +341,7 @@ export class BaseScene extends Phaser.Scene {
   private placeSprite(s: Sprite, size: number, x: number, y: number): void {
     const c = toScreen(x + size / 2, y + size / 2);
     const bottom = c.sy + BASE_INSET * size * (TILE_H / 2);
-    const w = TILE_W * size * BASE_INSET, h = BASE_CUBE_H[size] ?? 26;
+    const w = TILE_W * size * BASE_INSET, h = texLift(s.img.texture.key, 26);
     s.img.setPosition(c.sx, bottom).setDepth(x + y + size);
     s.label.setPosition(c.sx, bottom - h - w / 4).setDepth(x + y + size + 0.5);
   }
@@ -320,6 +357,10 @@ export class BaseScene extends Phaser.Scene {
     }
     for (const [uid, s] of this.sprites) {
       if (!alive.has(uid)) { s.img.destroy(); s.label.destroy(); this.sprites.delete(uid); }
+    }
+    for (const p of this.props) {
+      const covered = [[0, 0], [1, 0], [0, 1], [1, 1]].some(([dx, dy]) => this.base.buildingAt(p.x + dx, p.y + dy));
+      p.img.setVisible(!covered);
     }
   }
 
