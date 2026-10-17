@@ -72,6 +72,7 @@ export class Battle {
   static readonly DT = 0.05;
 
   time = 0;
+  ticks = 0; // 开战后走了几步；指挥记录按它对齐，服务器重放时在同一步下达
   started = false;
   attacker: Side = 'player'; // 进攻方；演习时玩家是防守方
   timeLimit = Infinity; // 超时算防守方赢（演习用）
@@ -200,6 +201,7 @@ export class Battle {
 
   step(): void {
     if (!this.started || this.outcome) return;
+    this.ticks++;
     this.time += Battle.DT;
     for (const e of this.entities) { e.px = e.x; e.py = e.y; }
     for (const e of this.entities) {

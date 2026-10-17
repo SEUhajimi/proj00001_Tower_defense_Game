@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { baseDef, BASE_BUILDINGS, type BaseBuildingId } from '../data/economy';
-import { DEFS, type DefId } from '../data/units';
-import type { Side } from '../sim/battle';
+import { baseDef, BASE_BUILDINGS, type BaseBuildingId } from '../../shared/data/economy';
+import { DEFS, type DefId } from '../../shared/data/units';
+import type { Side } from '../../shared/sim/battle';
 import { TILE_W } from './iso';
 
 // 正式美术：Kenney 的 CC0 素材（public/assets/kenney，见那里的 CREDITS.md）。

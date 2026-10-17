@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { AI_ATTACK, AI_LEVELS } from '../src/data/ai';
-import { START_TECH, TECH_STAGES } from '../src/data/tech';
-import { DEFS } from '../src/data/units';
-import { Base, newBaseState } from '../src/sim/base/base';
-import { Battle } from '../src/sim/battle';
-import { Grid } from '../src/sim/grid';
-import { Rng } from '../src/sim/rng';
-import { createDrill, DRILL_TIME_LIMIT } from '../src/sim/world/drill';
-import { generateAiLayout } from '../src/sim/world/ai';
+import { AI_ATTACK, AI_LEVELS } from '../shared/data/ai';
+import { START_TECH, TECH_STAGES } from '../shared/data/tech';
+import { DEFS } from '../shared/data/units';
+import { Base, newBaseState } from '../shared/sim/base/base';
+import { Battle } from '../shared/sim/battle';
+import { Grid } from '../shared/sim/grid';
+import { Rng } from '../shared/sim/rng';
+import { createDrill, DRILL_TIME_LIMIT } from '../shared/sim/world/drill';
+import { generateAiLayout } from '../shared/sim/world/ai';
 
 const T0 = 1_700_000_000_000;
 

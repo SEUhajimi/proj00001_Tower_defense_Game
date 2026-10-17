@@ -1,7 +1,7 @@
-import { DAMAGE_TYPE_NAME } from '../data/combat';
-import { RESOURCE_NAME, RESOURCES } from '../data/economy';
-import { DEFS, type DefId, type UnitDef } from '../data/units';
-import { isAir, isMobile, type Side, type Stance } from '../sim/battle';
+import { DAMAGE_TYPE_NAME } from '../../shared/data/combat';
+import { RESOURCE_NAME, RESOURCES } from '../../shared/data/economy';
+import { DEFS, type DefId, type UnitDef } from '../../shared/data/units';
+import { isAir, isMobile, type Side, type Stance } from '../../shared/sim/battle';
 import type { BattleScene } from '../game/BattleScene';
 
 // 战斗界面右侧面板。阶段切换时 render() 重建结构，refresh() 定时刷新数字。
@@ -45,6 +45,7 @@ export class Hud {
       case 'again': s.newBattle(); break;
       case 'home': s.goHome(); break;
       case 'annex': s.annex(); break;
+      case 'settle': s.settle(); break;
     }
   }
 
@@ -227,8 +228,16 @@ export class Hud {
   // 出击结算：伤员、掠夺所得、吞并
   private sortieHtml(): string {
     const s = this.scene, r = s.report;
+    if (s.settling) return '<p class="hint">正在向服务器结算……</p>';
+    if (s.settleError) {
+      return `<p class="neg">结算失败：${s.settleError}</p>${btn('settle', '', '重新结算', { primary: true })}
+        <p class="hint">战斗记录还在，连上服务器后点“重新结算”。直接返回基地的话，这场出击不计入存档。</p>`;
+    }
     if (!r) return '';
     const parts: string[] = [];
+    if (r.outcome !== (s.battle.outcome ?? 'retreat')) {
+      parts.push(`<p class="neg">服务器重算的结果是「${OUTCOME_TEXT[r.outcome]}」，以服务器为准。</p>`);
+    }
     if (r.wounded) parts.push(`<p>${r.wounded} 支部队带伤回到基地，在国防部花资源维修后才能再出击。</p>`);
     if (r.loot) {
       const rows = RESOURCES.filter(k => r.loot!.loot[k] > 0).map(k => {

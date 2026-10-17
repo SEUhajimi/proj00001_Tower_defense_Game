@@ -1,14 +1,15 @@
 import Phaser from 'phaser';
-import type { DamageType } from '../data/combat';
-import { DEFS, type DefId } from '../data/units';
-import { Battle, isAir, isMobile, type Entity, type Stance } from '../sim/battle';
-import { autoDeploy, type Deployment } from '../sim/deploy';
-import type { Point } from '../sim/grid';
-import { createPrototypeBattle, ENEMY_HQ_CENTER, MAP_W as PROTO_MAP } from '../sim/scenario';
-import { createAiBattle, settleSortie, type AiBattle, type Roster, type SortieReport } from '../sim/world/sortie';
-import type { AiBase } from '../sim/world/ai';
-import { createDrill } from '../sim/world/drill';
-import { save, session } from './session';
+import type { DamageType } from '../../shared/data/combat';
+import { DEFS, type DefId } from '../../shared/data/units';
+import { Battle, isAir, isMobile, type Entity, type Stance } from '../../shared/sim/battle';
+import { autoDeploy, type Deployment } from '../../shared/sim/deploy';
+import type { Point } from '../../shared/sim/grid';
+import { createPrototypeBattle, ENEMY_HQ_CENTER, MAP_W as PROTO_MAP } from '../../shared/sim/scenario';
+import type { BattleLog } from '../../shared/sim/world/replay';
+import { createAiBattle, type Roster, type SortieReport } from '../../shared/sim/world/sortie';
+import type { AiBase } from '../../shared/sim/world/ai';
+import { createDrill } from '../../shared/sim/world/drill';
+import { act, finishSortie, session } from './session';
 import { Hud } from '../ui/hud';
 import { footprintDiamond, pointsOf, TILE_H, TILE_W, tileDiamond, toScreen, toWorld } from './iso';
 import { FX_EXPLOSION, FX_SMOKE, ROCK_KEYS, texLift, texScale } from './art';
@@ -22,6 +23,8 @@ export interface BattleInit {
   mode: 'sortie' | 'drill' | 'prototype';
   aiId?: number;
   roster?: Roster; // 出击带的部队；演习时是进攻方的部队
+  sortieId?: string; // 出击：服务器发的编号和战场种子
+  seed?: number;
 }
 
 const AI_TINT = 0xff9a9a;
@@ -58,10 +61,15 @@ export class BattleScene extends Phaser.Scene {
 
   mode: BattleInit['mode'] = 'prototype';
   ai: AiBase | null = null;
-  report: SortieReport | null = null; // 出击结算结果
+  report: SortieReport | null = null; // 出击结算结果（服务器算的）
+  settling = false; // 正在等服务器结算
+  settleError: string | null = null;
   annexed = false;
   private roster: Roster = {};
-  private fight: AiBattle | null = null;
+  private sortieId = '';
+  private sortieSeed = 1;
+  // 出击的战斗记录：开战时的部署 + 交战中的每条命令，结束后交给服务器重打
+  private log: BattleLog = { placements: [], commands: [] };
   private mapW = PROTO_MAP;
   private mapH = PROTO_MAP;
   private hqCenter: Point = ENEMY_HQ_CENTER;
@@ -89,8 +97,10 @@ export class BattleScene extends Phaser.Scene {
   init(data: BattleInit): void {
     this.mode = data?.mode ?? 'prototype';
     this.roster = { ...(data?.roster ?? {}) };
+    this.sortieId = data?.sortieId ?? '';
+    this.sortieSeed = data?.seed ?? 1;
     this.ai = this.mode === 'sortie' && data.aiId !== undefined ? session().base.getAi(data.aiId) ?? null : null;
-    if (this.mode === 'sortie' && !this.ai) this.mode = 'prototype';
+    if (this.mode === 'sortie' && (!this.ai || !this.sortieId)) this.mode = 'prototype';
   }
 
   create(): void {
@@ -126,13 +136,16 @@ export class BattleScene extends Phaser.Scene {
     for (const fx of this.effects) fx.img?.destroy();
     this.effects = [];
     this.report = null;
+    this.settling = false;
+    this.settleError = null;
     this.annexed = false;
+    this.log = { placements: [], commands: [] };
     if (this.mode === 'sortie' && this.ai) {
-      this.fight = createAiBattle(this.ai, this.roster, Date.now() % 1e9);
-      this.battle = this.fight.battle;
-      this.deployment = this.fight.deployment;
-      this.mapW = this.mapH = this.fight.mapSize;
-      this.hqCenter = this.fight.hqCenter;
+      const fight = createAiBattle(this.ai, this.roster, this.sortieSeed);
+      this.battle = fight.battle;
+      this.deployment = fight.deployment;
+      this.mapW = this.mapH = fight.mapSize;
+      this.hqCenter = fight.hqCenter;
     } else if (this.mode === 'drill') {
       const drill = createDrill(session().base, this.roster, Date.now() % 1e9);
       this.battle = drill.battle;
@@ -178,13 +191,16 @@ export class BattleScene extends Phaser.Scene {
     for (const e of this.deployment.placed()) {
       this.deployedCounts[e.defId] = (this.deployedCounts[e.defId] ?? 0) + 1;
     }
+    this.log.placements = this.deployment.placed().map(e => ({ id: e.id, defId: e.defId, x: e.x, y: e.y, stance: e.stance }));
     this.battle.start();
     this.setPhase('battle');
   }
 
   // 有选中的部队就只改它们，否则改全军
   setAllStance(stance: Stance): void {
-    this.battle.setStance('player', stance, this.selected.size ? [...this.selected] : undefined);
+    const ids = this.selected.size ? [...this.selected] : undefined;
+    this.battle.setStance('player', stance, ids);
+    this.log.commands.push({ step: this.battle.ticks, kind: 'stance', stance, ids });
     this.hud.render();
   }
 
@@ -206,14 +222,23 @@ export class BattleScene extends Phaser.Scene {
   }
 
   retreat(): void {
+    if (this.battle.started && !this.battle.outcome) this.log.commands.push({ step: this.battle.ticks, kind: 'retreat' });
     this.battle.retreat();
   }
 
-  // 出击结束：结算伤亡、掠夺，写回存档
-  private settle(): void {
-    if (this.mode !== 'sortie' || !this.ai || !this.fight || this.report) return;
-    this.report = settleSortie(session().base, this.ai, this.fight, this.roster, Date.now());
-    save();
+  // 出击结束：把战斗记录交给服务器，服务器重打一遍、结算伤亡和掠夺，以它的结果为准。
+  // 断线导致失败时可以再试
+  settle(): void {
+    if (this.mode !== 'sortie' || !this.ai || this.settling || this.report) return;
+    this.settling = true;
+    this.settleError = null;
+    if (this.phase === 'result') this.hud.render();
+    void finishSortie(this.sortieId, this.log).then(r => {
+      this.settling = false;
+      if (typeof r === 'string') this.settleError = r;
+      else this.report = r;
+      if (this.phase === 'result') this.hud.render();
+    });
   }
 
   // 胜利结算时吞并（必须相邻且付得起）
@@ -226,10 +251,7 @@ export class BattleScene extends Phaser.Scene {
 
   annex(): void {
     if (!this.ai) return;
-    if (session().base.annex(this.ai) === true) {
-      this.annexed = true;
-      save();
-    }
+    if (act({ type: 'annex', aiId: this.ai.id }) === true) this.annexed = true;
     this.hud.render();
   }
 
@@ -589,12 +611,14 @@ export class BattleScene extends Phaser.Scene {
     }
     if (target) {
       this.battle.orderAttack(ids, target.id);
+      this.log.commands.push({ step: this.battle.ticks, kind: 'attack', ids, targetId: target.id });
       const p = toScreen(target.x, target.y);
       this.effects.push({ kind: 'ring', x1: p.sx, y1: p.sy, x2: 0, y2: 0, r: 14, color: 0xff4040, t: 0.4, max: 0.4 });
       return;
     }
     if (!this.battle.grid.isWalkable(tx, ty)) return;
     this.battle.orderMove(ids, w.x, w.y);
+    this.log.commands.push({ step: this.battle.ticks, kind: 'move', ids, x: w.x, y: w.y });
     this.effects.push({ kind: 'ring', x1: wx, y1: wy, x2: 0, y2: 0, r: 10, color: 0x7dff8a, t: 0.4, max: 0.4 });
   }
 

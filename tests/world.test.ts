@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { AI_LEVELS, AI_SPAWN } from '../src/data/ai';
-import { START_ARMY, TRAINING } from '../src/data/army';
-import { HALL_STORAGE } from '../src/data/economy';
-import { DEFS } from '../src/data/units';
-import { Base, newBaseState } from '../src/sim/base/base';
-import { step } from '../src/sim/base/economy';
-import { REGION_PLOTS, START_PLOT } from '../src/sim/base/terrain';
-import { autoDeploy } from '../src/sim/deploy';
-import { aiPlots, aiRect, generateAiLayout, isProtected, type AiBase } from '../src/sim/world/ai';
-import { canSortie, createAiBattle, DROP_RING, settleSortie } from '../src/sim/world/sortie';
+import { AI_LEVELS, AI_SPAWN } from '../shared/data/ai';
+import { START_ARMY, TRAINING } from '../shared/data/army';
+import { HALL_STORAGE } from '../shared/data/economy';
+import { DEFS } from '../shared/data/units';
+import { Base, newBaseState } from '../shared/sim/base/base';
+import { step } from '../shared/sim/base/economy';
+import { REGION_PLOTS, START_PLOT } from '../shared/sim/base/terrain';
+import { autoDeploy } from '../shared/sim/deploy';
+import { aiPlots, aiRect, generateAiLayout, isProtected, type AiBase } from '../shared/sim/world/ai';
+import { canSortie, createAiBattle, DROP_RING, settleSortie } from '../shared/sim/world/sortie';
 
 const T0 = 1_700_000_000_000;
 const HOUR = 3600_000;

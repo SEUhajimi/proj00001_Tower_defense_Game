@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { baseDef, BASE_BUILDINGS, type BaseBuildingId } from '../data/economy';
-import { DEFS, type DefId } from '../data/units';
-import type { Side } from '../sim/battle';
+import { baseDef, BASE_BUILDINGS, type BaseBuildingId } from '../../shared/data/economy';
+import { DEFS, type DefId } from '../../shared/data/units';
+import type { Side } from '../../shared/sim/battle';
 import { TILE_W } from './iso';
 
 // 占位美术：全部用代码画，正式素材在阶段 5 替换。

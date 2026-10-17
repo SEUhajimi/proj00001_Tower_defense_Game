@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { HALL_STORAGE, START_RESOURCES, TERRAIN_PRICE } from '../src/data/economy';
-import { Base, newBaseState } from '../src/sim/base/base';
-import { advanceTo, hourlyRates, powerInfo, step } from '../src/sim/base/economy';
-import { PLOT_SIZE, REGION_PLOTS, START_PLOT } from '../src/sim/base/terrain';
+import { HALL_STORAGE, START_RESOURCES, TERRAIN_PRICE } from '../shared/data/economy';
+import { Base, newBaseState } from '../shared/sim/base/base';
+import { advanceTo, hourlyRates, powerInfo, step } from '../shared/sim/base/economy';
+import { PLOT_SIZE, REGION_PLOTS, START_PLOT } from '../shared/sim/base/terrain';
 
 const HOUR = 3600_000;
 const T0 = 1_700_000_000_000;

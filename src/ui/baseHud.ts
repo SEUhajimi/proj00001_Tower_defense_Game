@@ -1,15 +1,16 @@
 import {
   baseDef, MINISTRY_NAME, RESOURCE_NAME, RESOURCES, TAX_PER_PERSON, TERRAIN_NAME,
   type Amounts, type BaseBuildingId, type Ministry, type ResourceId,
-} from '../data/economy';
-import { AI_ATTACK, LOOT_SHARE } from '../data/ai';
-import { TRAINABLE, TRAINING } from '../data/army';
-import { STAGE_NAME, TECH_REQUIRES, TECH_STAGES } from '../data/tech';
-import { DEFS, getDef, MOBILE_UNITS, type DefId } from '../data/units';
-import { BUILDABLE } from '../sim/base/base';
-import { hourlyRates, powerInfo } from '../sim/base/economy';
-import { aiCapacity, isProtected } from '../sim/world/ai';
-import type { Roster } from '../sim/world/sortie';
+} from '../../shared/data/economy';
+import { AI_ATTACK, LOOT_SHARE } from '../../shared/data/ai';
+import { TRAINABLE, TRAINING } from '../../shared/data/army';
+import { STAGE_NAME, TECH_REQUIRES, TECH_STAGES } from '../../shared/data/tech';
+import { DEFS, getDef, MOBILE_UNITS, type DefId } from '../../shared/data/units';
+import { BUILDABLE } from '../../shared/sim/base/base';
+import { hourlyRates, powerInfo } from '../../shared/sim/base/economy';
+import { aiCapacity, isProtected } from '../../shared/sim/world/ai';
+import type { Roster } from '../../shared/sim/world/sortie';
+import { currentUser, logout } from '../game/api';
 import type { BaseScene } from '../game/BaseScene';
 
 // 基地模式右侧面板：资源总览、市政厅四部门（科技部含科技树，国防部含征兵和演习）、
@@ -39,17 +40,13 @@ export class BaseHud {
   private readonly onInput = (ev: Event) => {
     const el = ev.target as HTMLInputElement;
     if (el.dataset.input === 'tax') { this.scene.setTax(Number(el.value) / 100); this.refresh(); }
-    if (el.dataset.input === 'saveFile' && ev.type === 'change' && el.files?.[0]) {
-      el.files[0].text().then(t => this.scene.importSave(t));
-      el.value = '';
-    }
     if (el.dataset.drill) this.drill[el.dataset.drill as DefId] = Math.max(0, Math.min(99, Math.floor(Number(el.value) || 0)));
   };
 
   constructor(private scene: BaseScene) {
     this.root.addEventListener('click', this.onClick);
     this.root.addEventListener('input', this.onInput);
-    this.root.addEventListener('change', this.onInput);
+
     this.timer = window.setInterval(() => this.refresh(), 500);
     this.render();
   }
@@ -57,7 +54,7 @@ export class BaseHud {
   destroy(): void {
     this.root.removeEventListener('click', this.onClick);
     this.root.removeEventListener('input', this.onInput);
-    this.root.removeEventListener('change', this.onInput);
+
     window.clearInterval(this.timer);
     this.root.innerHTML = '';
   }
@@ -79,8 +76,8 @@ export class BaseHud {
       case 'drillClear': this.drill = {}; this.render(); break;
       case 'drill': s.startDrill(this.drill); break;
       case 'sortie': s.startSortie(this.readRoster()); break;
+      case 'logout': void logout(); break;
       case 'exportSave': s.exportSave(); break;
-      case 'importSave': this.root.querySelector<HTMLInputElement>('input[data-input="saveFile"]')?.click(); break;
       case 'ff': s.fastForward(1); break;
       case 'reset': if (confirm('清空存档，重新开局？')) s.resetSave(); break;
     }
@@ -90,6 +87,7 @@ export class BaseHud {
     const s = this.scene;
     this.root.innerHTML = `
       ${this.offlineHtml()}
+      <div class="account">账号 <b>${esc(currentUser() ?? '')}</b>${btn('logout', '', '登出')}</div>
       <h2>市政厅</h2>
       <div class="resgrid">${RESOURCES.map(r => `
         <div class="res"><span>${RESOURCE_NAME[r]}</span><b data-v="res-${r}"></b><small data-v="rate-${r}"></small></div>`).join('')}
@@ -112,9 +110,8 @@ export class BaseHud {
       ${this.selectionHtml()}
       <p class="msg" data-v="msg"></p>
       <p class="hint">左键选择/放置 · Shift+左键连续建造 · 右键取消 · 右键拖动或 WASD 移动视角 · 滚轮缩放</p>
-      <div class="row save">${btn('exportSave', '', '导出存档')}${btn('importSave', '', '导入存档')}
-        <input type="file" accept=".json,application/json" data-input="saveFile" hidden></div>
-      <p class="hint">游戏自动保存在浏览器里。导出的存档文件可以备份，或换台电脑导入继续玩；导入会覆盖当前进度。</p>
+      <div class="row save">${btn('exportSave', '', '导出存档')}</div>
+      <p class="hint">存档保存在服务器上，每个操作都自动保存，换台电脑登录同一个账号就能接着玩。导出的文件只作备份。</p>
       ${import.meta.env.DEV ? `<div class="row dev">${btn('ff', '', '调试：快进 1 小时')}${btn('proto', '', '战斗原型')}${btn('reset', '', '重置存档', { danger: true })}</div>` : ''}`;
     this.refresh();
   }
@@ -346,4 +343,8 @@ function unitBrief(id: DefId): string {
   if (t) return `征召 ${costText(t.cost)}`;
   const d = getDef(id);
   return d.cost ? `修建 ${costText(d.cost)}` : '';
+}
+
+function esc(s: string): string {
+  return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 }

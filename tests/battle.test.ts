@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { DAMAGE_MULT } from '../src/data/combat';
-import { DEFS, type DefId } from '../src/data/units';
-import { Battle } from '../src/sim/battle';
-import { autoDeploy } from '../src/sim/deploy';
-import { Grid } from '../src/sim/grid';
-import { Rng } from '../src/sim/rng';
-import { createPrototypeBattle, DROP_RING, ENEMY_HQ_CENTER, MAP_W } from '../src/sim/scenario';
+import { DAMAGE_MULT } from '../shared/data/combat';
+import { DEFS, type DefId } from '../shared/data/units';
+import { Battle } from '../shared/sim/battle';
+import { autoDeploy } from '../shared/sim/deploy';
+import { Grid } from '../shared/sim/grid';
+import { Rng } from '../shared/sim/rng';
+import { createPrototypeBattle, DROP_RING, ENEMY_HQ_CENTER, MAP_W } from '../shared/sim/scenario';
 
 function runToEnd(battle: Battle, maxSeconds = 900): void {
   battle.start();

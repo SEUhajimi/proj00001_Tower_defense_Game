@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { START_TECH } from '../src/data/tech';
-import { Base, newBaseState } from '../src/sim/base/base';
-import { exportSave, importSave, loadBase, parseSave, saveBase, type SaveStorage } from '../src/sim/base/save';
+import { START_TECH } from '../shared/data/tech';
+import { Base, newBaseState } from '../shared/sim/base/base';
+import { exportSave, importSave, loadBase, parseSave, saveBase, type SaveStorage } from '../shared/sim/base/save';
 
 const T0 = 1_700_000_000_000;
 const KEY = 'baseguard.base.v2';

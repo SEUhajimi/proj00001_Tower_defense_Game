@@ -1,14 +1,14 @@
 import Phaser from 'phaser';
-import { baseDef, type BaseBuildingId, type Terrain } from '../data/economy';
-import { DEFS, type DefId } from '../data/units';
-import { Base, type PlacedBuilding } from '../sim/base/base';
-import { advanceTo } from '../sim/base/economy';
-import { PLOT_SIZE, REGION_PLOTS, REGION_TILES } from '../sim/base/terrain';
-import { aiRect, generateAiLayout, isProtected, type AiBase } from '../sim/world/ai';
-import { canSortie, type Roster } from '../sim/world/sortie';
+import { baseDef, type BaseBuildingId, type Terrain } from '../../shared/data/economy';
+import { DEFS, type DefId } from '../../shared/data/units';
+import { Base, type PlacedBuilding } from '../../shared/sim/base/base';
+import { advanceTo } from '../../shared/sim/base/economy';
+import { PLOT_SIZE, REGION_PLOTS, REGION_TILES } from '../../shared/sim/base/terrain';
+import { aiRect, generateAiLayout, isProtected, type AiBase } from '../../shared/sim/world/ai';
+import { canSortie, type Roster } from '../../shared/sim/world/sortie';
 import { BaseHud } from '../ui/baseHud';
 import { footprintDiamond, pointsOf, TILE_H, TILE_W, tileDiamond, toScreen, toWorld } from './iso';
-import { downloadSave, loadSaveText, resetSession, save, session } from './session';
+import { act, downloadSave, fastForward, onSync, resetBase, session, startSortie } from './session';
 import { ROCK_KEYS, texLift, texScale, TREE_KEYS } from './art';
 import { BASE_INSET, makeBaseTextures } from './textures';
 
@@ -57,17 +57,16 @@ export class BaseScene extends Phaser.Scene {
   private dragFrom: { x: number; y: number; scrollX: number; scrollY: number } | null = null;
   private keys!: Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT', Phaser.Input.Keyboard.Key>;
   private tickTimer = 0;
-  private saveTimer = 0;
+  private taxTimer = 0; // 拖动税率滑块时，停手后再发给服务器
+  private busy = false; // 正在等服务器（出击、重新开局），别重复点
   private hud!: BaseHud;
-  private discardSave = false; // 重置存档时，退出场景不再写回
-  private readonly saveOnUnload = () => save();
 
   constructor() {
     super('base');
   }
 
   create(): void {
-    this.discardSave = false;
+    this.busy = false;
     const s = session();
     this.base = s.base;
     advanceTo(this.base, Date.now());
@@ -96,10 +95,17 @@ export class BaseScene extends Phaser.Scene {
     this.setupInput();
 
     this.hud = new BaseHud(this);
-    window.addEventListener('beforeunload', this.saveOnUnload);
+    // 服务器结果回来：以它为准重画；被拒绝的操作显示原因
+    const off = onSync(error => {
+      if (this.selected !== null && !this.base.state.buildings.some(b => b.uid === this.selected)) this.selected = null;
+      if (error) this.message = error;
+      this.syncBuildings();
+      this.drawTerritory();
+      this.hud.render();
+    });
     this.events.once('shutdown', () => {
-      if (!this.discardSave) save();
-      window.removeEventListener('beforeunload', this.saveOnUnload);
+      off();
+      window.clearTimeout(this.taxTimer);
       this.hud.destroy();
     });
   }
@@ -126,30 +132,33 @@ export class BaseScene extends Phaser.Scene {
 
   demolishSelected(): void {
     if (this.selected === null) return;
-    const r = this.base.demolish(this.selected);
+    const r = act({ type: 'demolish', uid: this.selected });
     this.message = r === true ? '' : r;
     if (r === true) { this.selected = null; this.syncBuildings(); }
     this.hud.render();
   }
 
+  // 本地马上生效；停手半秒后再发给服务器
   setTax(rate: number): void {
     this.base.state.taxRate = rate;
+    window.clearTimeout(this.taxTimer);
+    this.taxTimer = window.setTimeout(() => act({ type: 'setTax', rate }), 500);
   }
 
   recruit(defId: DefId, n: number): void {
-    const r = this.base.recruit(defId, n);
+    const r = act({ type: 'recruit', defId, n });
     this.message = r === true ? '' : r;
     this.hud.render();
   }
 
   repairAll(): void {
-    const r = this.base.repairAll();
+    const r = act({ type: 'repairAll' });
     this.message = r === true ? '' : r;
     this.hud.render();
   }
 
   research(defId: DefId): void {
-    const r = this.base.research(defId);
+    const r = act({ type: 'research', defId });
     this.message = r === true ? `${DEFS[defId].name}研发完成` : r;
     this.hud.render();
   }
@@ -161,10 +170,7 @@ export class BaseScene extends Phaser.Scene {
   }
 
   fastForward(hours: number): void {
-    this.base.state.lastTick -= hours * 3600_000;
-    for (const ai of this.base.state.ai) ai.lastTick -= hours * 3600_000;
-    advanceTo(this.base, Date.now());
-    this.hud.refresh();
+    void fastForward(hours).then(err => { if (err) { this.message = err; this.hud.render(); } });
   }
 
   exportSave(): void {
@@ -173,28 +179,28 @@ export class BaseScene extends Phaser.Scene {
     this.hud.render();
   }
 
-  // 导入存档文件：覆盖当前进度，重新进入基地
-  importSave(text: string): void {
-    const r = loadSaveText(text);
-    if (r !== true) { this.message = `导入失败：${r}`; this.hud.render(); return; }
-    this.discardSave = true;
-    session().notice = '存档已导入';
-    this.scene.restart();
-  }
-
   resetSave(): void {
-    this.discardSave = true;
-    resetSession();
-    this.scene.restart();
+    if (this.busy) return;
+    this.busy = true;
+    void resetBase().then(err => {
+      this.busy = false;
+      if (err) { this.message = err; this.hud.render(); return; }
+      this.scene.restart();
+    });
   }
 
-  // 出击：检查后进入战斗场景
+  // 出击：本地先查一遍，再向服务器要战场种子，然后进入战斗场景
   startSortie(roster: Roster): void {
     const ai = this.selectedAiBase();
-    if (!ai) return;
+    if (!ai || this.busy) return;
     const ok = canSortie(this.base, ai, roster, Date.now());
     if (ok !== true) { this.message = ok; this.hud.render(); return; }
-    this.scene.start('battle', { mode: 'sortie', aiId: ai.id, roster });
+    this.busy = true;
+    void startSortie(ai.id, roster).then(r => {
+      this.busy = false;
+      if (typeof r === 'string') { this.message = r; this.hud.render(); return; }
+      this.scene.start('battle', { mode: 'sortie', aiId: ai.id, roster, sortieId: r.sortieId, seed: r.seed });
+    });
   }
 
   enterPrototype(): void {
@@ -214,14 +220,10 @@ export class BaseScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     this.moveCameraByKeys(deltaMs / 1000);
     this.tickTimer += deltaMs;
-    this.saveTimer += deltaMs;
+    // 本地按时间推进生产，只为了显示；存档以服务器为准
     if (this.tickTimer >= 1000) {
       this.tickTimer = 0;
       advanceTo(this.base, Date.now());
-    }
-    if (this.saveTimer >= 10_000) {
-      this.saveTimer = 0;
-      save();
     }
     this.drawGhost();
   }
@@ -486,7 +488,7 @@ export class BaseScene extends Phaser.Scene {
   private click(tx: number, ty: number, shift: boolean): void {
     if (this.mode === 'build' && this.tool) {
       const spot = this.ghostSpot()!;
-      const r = this.base.build(this.tool, spot.x, spot.y);
+      const r = act({ type: 'build', defId: this.tool, x: spot.x, y: spot.y });
       this.message = typeof r === 'string' ? r : '';
       if (typeof r !== 'string') {
         this.syncBuildings();
@@ -495,14 +497,14 @@ export class BaseScene extends Phaser.Scene {
       this.hud.render();
     } else if (this.mode === 'move' && this.selected !== null) {
       const spot = this.ghostSpot()!;
-      const r = this.base.move(this.selected, spot.x, spot.y);
+      const r = act({ type: 'move', uid: this.selected, x: spot.x, y: spot.y });
       this.message = r === true ? '' : r;
       if (r === true) this.setMode('idle');
       this.syncBuildings();
       this.hud.render();
     } else if (this.mode === 'buyLand') {
       const plot = Math.floor(ty / PLOT_SIZE) * REGION_PLOTS + Math.floor(tx / PLOT_SIZE);
-      const r = this.base.buyPlot(plot);
+      const r = act({ type: 'buyPlot', plot });
       this.message = r === true ? '' : r;
       this.drawTerritory();
       this.hud.render();

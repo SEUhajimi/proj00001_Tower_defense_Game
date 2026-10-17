@@ -81,6 +81,15 @@ export class Base {
     this.rebuildAiPlots();
   }
 
+  // 换成服务器发来的状态（同一个存档，地形不变），原地更新，场景里拿着的引用继续有效
+  adopt(state: BaseState): void {
+    if (state.seed !== this.state.seed) throw new Error('不是同一个存档');
+    Object.assign(this.state, state);
+    this.ownedSet = new Set(this.state.owned);
+    this.rebuildOccupancy();
+    this.rebuildAiPlots();
+  }
+
   // ---------- 地块与格子 ----------
 
   plotIndex(tx: number, ty: number): number {
