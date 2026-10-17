@@ -132,20 +132,21 @@ describe('生产', () => {
     expect(hourlyRates(b).research).toBeCloseTo(5 + 40 * 10 / 12, 3);
   });
 
-  it('收税：人口 × 20 × 税率', () => {
+  it('收税：市民 × 20 × 税率', () => {
     const b = fresh();
-    b.state.pop = b.popCap(); // 人口满了就不再增长，方便验算
+    b.state.pop = b.popCap() - b.soldierPop(); // 住房满了就不再增长，方便验算（开局 10 名士兵占住房）
     const gold = b.state.res.gold;
     hours(b, 1);
-    expect(b.state.res.gold - gold).toBeCloseTo(30 * 20 * 0.1, 3);
+    expect(b.state.res.gold - gold).toBeCloseTo(b.state.pop * 20 * 0.1, 3);
   });
 
-  it('人口向住房上限增长', () => {
+  it('市民向住房空位增长（士兵也占住房）', () => {
     const b = rich();
     b.build('house', PLAIN.x, PLAIN.y);
+    const room = b.popCap() - b.soldierPop(); // 50 - 10
     hours(b, 4);
-    expect(b.state.pop).toBeGreaterThan(40);
-    expect(b.state.pop).toBeLessThanOrEqual(50);
+    expect(b.state.pop).toBeGreaterThan(room - 5);
+    expect(b.state.pop).toBeLessThanOrEqual(room);
   });
 });
 

@@ -107,3 +107,14 @@ html, body {
 #hud .dev { margin-top: 10px; opacity: 0.7; }
 #hud .dev button { font-size: 12px; text-align: center; }
 #hud h3 .sel { color: var(--text); }
+
+#hud .unitrow { display: flex; align-items: center; gap: 6px; background: var(--card); border-radius: 6px; padding: 5px 8px; margin-bottom: 4px; font-size: 13px; }
+#hud .unitrow > div { flex: 1; min-width: 0; }
+#hud .unitrow small { display: block; font-size: 11px; }
+#hud .unitrow button { width: auto; padding: 3px 8px; text-align: center; }
+#hud .roster { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px; }
+#hud label.pick { font-size: 12px; background: var(--bg); border-radius: 4px; padding: 3px 6px; }
+#hud label.pick input { width: 40px; margin: 0 2px 0 4px; background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 3px; }
+#hud .selection table.stats { font-size: 12px; }
+#hud .selection button[data-act="sortie"] { background: var(--accent); text-align: center; font-weight: bold; }
+#hud .vitals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 8px; }

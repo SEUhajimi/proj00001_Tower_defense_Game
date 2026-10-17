@@ -2,6 +2,7 @@ import {
   baseDef, BASE_BUILDINGS, POP_GROWTH_RATE, RESOURCES, TAX_PER_PERSON,
   type BaseBuildingId, type ResourceId,
 } from '../../data/economy';
+import { advanceAi } from '../world/ai';
 import { Base } from './base';
 
 const MS_PER_HOUR = 3600_000;
@@ -75,12 +76,15 @@ export function step(base: Base, hours: number): void {
   // 税收
   res.gold = Math.min(cap.gold, res.gold + s.pop * TAX_PER_PERSON * s.taxRate * hours);
 
-  // 人口：向住房上限靠拢，税率越高增长越慢；拆了民居则立即降到上限
-  const popCap = base.popCap();
-  if (s.pop > popCap) s.pop = popCap;
+  // 部队口粮
+  res.food = Math.max(0, res.food - base.armyFood() * hours);
+
+  // 人口：士兵和市民共用住房。市民向剩下的空位靠拢，税率越高增长越慢；住房不够则立即减少
+  const room = Math.max(0, base.popCap() - base.soldierPop());
+  if (s.pop > room) s.pop = room;
   else {
     const g = POP_GROWTH_RATE * Math.max(0, 1 - 1.5 * s.taxRate);
-    s.pop += (popCap - s.pop) * (1 - Math.exp(-g * hours));
+    s.pop += (room - s.pop) * (1 - Math.exp(-g * hours));
   }
 
   // 科研
@@ -99,6 +103,7 @@ export function advanceTo(base: Base, now: number): { hours: number; gained: Res
     for (let left = elapsed; left > 0; left -= STEP_MS) step(base, Math.min(left, STEP_MS) / MS_PER_HOUR);
   }
   s.lastTick = Math.max(s.lastTick, now);
+  for (const ai of s.ai) advanceAi(ai, now);
   const gained = zero();
   for (const r of RESOURCES) gained[r] = s.res[r] - before[r];
   return { hours: Math.max(0, elapsed) / MS_PER_HOUR, gained };

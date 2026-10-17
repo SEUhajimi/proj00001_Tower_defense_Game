@@ -11,7 +11,8 @@ export interface Weapon {
   splash?: number;
 }
 
-export type UnitKind = 'infantry' | 'tank' | 'tower' | 'fort' | 'hq'; // fort = 可驻防的工事
+// fort = 可驻防的工事；civil = 民用建筑（不开火，只是可以被摧毁的目标）
+export type UnitKind = 'infantry' | 'tank' | 'tower' | 'fort' | 'civil' | 'hq';
 
 export interface Cost {
   steel?: number;
@@ -103,6 +104,15 @@ export const DEFS = {
     name: '地堡', kind: 'fort', armor: 'building', hp: 3000, speed: 0, radius: 1, size: 2,
     weapons: [], capacity: 4, rangeBonus: 1,
     cost: { steel: 120, ammo: 20 },
+  },
+  // 敌方基地里的民用建筑（民居、市场、仓库……），战斗中只按大小区分
+  civil2: {
+    name: '民用建筑', kind: 'civil', armor: 'building', hp: 1000, speed: 0, radius: 1, size: 2,
+    weapons: [],
+  },
+  civil3: {
+    name: '民用建筑', kind: 'civil', armor: 'building', hp: 1800, speed: 0, radius: 1.5, size: 3,
+    weapons: [],
   },
   hq: {
     name: '指挥部', kind: 'hq', armor: 'building', hp: 5000, speed: 0, radius: 1.5, size: 3,

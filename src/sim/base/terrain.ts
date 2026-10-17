@@ -1,14 +1,14 @@
 import type { Terrain } from '../../data/economy';
 import { Rng } from '../rng';
 
-// 基地所在区域：16×16 地块，每块 4×4 格，每块一种地形。
-// 阶段 3 会把它放到世界大地图上。
+// 世界地图：40×40 地块，每块 4×4 格，每块一种地形。玩家基地在正中间，AI 基地分布在四周。
 export const PLOT_SIZE = 4;
-export const REGION_PLOTS = 16;
+export const REGION_PLOTS = 40;
 export const REGION_TILES = REGION_PLOTS * PLOT_SIZE;
 
-// 开局领地：中间 3×3 地块
-export const START_PLOT = { x0: 6, y0: 6, size: 3 };
+// 开局领地：正中间 3×3 地块
+export const START_PLOT = { x0: 18, y0: 18, size: 3 };
+export const START_CENTER = { x: START_PLOT.x0 + START_PLOT.size / 2, y: START_PLOT.y0 + START_PLOT.size / 2 };
 
 export function generateTerrain(seed: number): Terrain[] {
   const rng = new Rng(seed);
@@ -25,10 +25,10 @@ export function generateTerrain(seed: number): Terrain[] {
       }
     }
   };
-  blob('forest', 7, 3, 7);
-  blob('mountain', 5, 2, 5);
-  blob('iron', 4, 1, 3);
-  blob('oil', 3, 1, 3);
+  blob('forest', 44, 3, 7);
+  blob('mountain', 31, 2, 5);
+  blob('iron', 25, 1, 3);
+  blob('oil', 19, 1, 3);
 
   // 开局领地保证有平原、森林、山地；铁矿就在隔壁，油田要再往外买一块
   const { x0, y0, size } = START_PLOT;

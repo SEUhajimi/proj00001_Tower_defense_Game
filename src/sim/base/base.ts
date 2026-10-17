@@ -1,7 +1,11 @@
+import { LOOT_SHARE, PROTECTION_HOURS } from '../../data/ai';
+import { REPAIR_RATE, START_ARMY, TRAINING } from '../../data/army';
 import {
   baseDef, BASE_BUILDINGS, HALL_STORAGE, RESOURCE_NAME, RESOURCES, START_POP, START_RESOURCES, START_TAX,
   TERRAIN_NAME, TERRAIN_PRICE, type Amounts, type BaseBuildingId, type ResourceId, type Terrain,
 } from '../../data/economy';
+import type { DefId } from '../../data/units';
+import { advanceAi, aiPlots, generateAiLayout, placeAiBases, type AiBase } from '../world/ai';
 import { generateTerrain, PLOT_SIZE, REGION_PLOTS, REGION_TILES, START_PLOT } from './terrain';
 
 export interface PlacedBuilding {
@@ -11,19 +15,28 @@ export interface PlacedBuilding {
   y: number;
 }
 
-// 存档里保存的全部内容（地形由种子重新生成，不存）
+// 带伤回来的部队，修好之前不能出击
+export interface Wounded {
+  defId: DefId;
+  hp: number; // 剩余血量比例 0–1
+}
+
+// 存档里保存的全部内容（地形和 AI 基地布局由种子重新生成，不存）
 export interface BaseState {
-  version: 1;
+  version: 2;
   seed: number;
   lastTick: number; // 上次结算到的时间戳（毫秒）
   owned: number[]; // 已拥有的地块编号
-  plotsBought: number; // 开局之后买过几块地，决定下一块的价格
+  plotsBought: number; // 开局之后买过（含吞并）几块地，决定下一块的价格
   buildings: PlacedBuilding[];
   nextUid: number;
   res: Record<ResourceId, number>;
-  pop: number;
+  pop: number; // 市民（不含士兵）
   taxRate: number;
   research: number; // 累计科研点（阶段 4 的科技树使用）
+  army: Partial<Record<DefId, number>>; // 可以出击的部队
+  wounded: Wounded[];
+  ai: AiBase[];
 }
 
 export function newBaseState(seed: number, now: number): BaseState {
@@ -33,14 +46,22 @@ export function newBaseState(seed: number, now: number): BaseState {
   }
   const mid = (START_PLOT.x0 + 1) * PLOT_SIZE + 1;
   return {
-    version: 1, seed, lastTick: now, owned, plotsBought: 0,
+    version: 2, seed, lastTick: now, owned, plotsBought: 0,
     buildings: [{ uid: 1, defId: 'hall', x: mid, y: mid }],
     nextUid: 2,
     res: { ...START_RESOURCES },
     pop: START_POP,
     taxRate: START_TAX,
     research: 0,
+    army: { ...START_ARMY },
+    wounded: [],
+    ai: placeAiBases(seed, now),
   };
+}
+
+export interface LootResult {
+  loot: Record<ResourceId, number>; // 抢到的
+  kept: Record<ResourceId, number>; // 实际入库的（仓库放不下的作废）
 }
 
 // 基地：包着存档状态，提供查询和玩家操作。所有操作失败时返回原因文字。
@@ -48,11 +69,13 @@ export class Base {
   readonly terrain: Terrain[];
   private occ = new Int32Array(REGION_TILES * REGION_TILES);
   private ownedSet: Set<number>;
+  private aiPlot = new Map<number, number>(); // 地块 → AI 基地 id
 
   constructor(readonly state: BaseState) {
     this.terrain = generateTerrain(state.seed);
     this.ownedSet = new Set(state.owned);
     this.rebuildOccupancy();
+    this.rebuildAiPlots();
   }
 
   // ---------- 地块与格子 ----------
@@ -99,7 +122,101 @@ export class Base {
     return this.state.buildings.reduce((n, b) => n + (b.defId === defId ? 1 : 0), 0);
   }
 
-  // ---------- 容量 ----------
+  // ---------- AI 基地 ----------
+
+  private rebuildAiPlots(): void {
+    this.aiPlot.clear();
+    for (const ai of this.state.ai) {
+      const s = aiPlots(ai);
+      for (let y = ai.py; y < ai.py + s; y++) for (let x = ai.px; x < ai.px + s; x++) this.aiPlot.set(y * REGION_PLOTS + x, ai.id);
+    }
+  }
+
+  aiAtPlot(plot: number): AiBase | undefined {
+    const id = this.aiPlot.get(plot);
+    return id === undefined ? undefined : this.state.ai.find(a => a.id === id);
+  }
+
+  aiAt(tx: number, ty: number): AiBase | undefined {
+    return this.inRegion(tx, ty) ? this.aiAtPlot(this.plotIndex(tx, ty)) : undefined;
+  }
+
+  getAi(id: number): AiBase | undefined {
+    return this.state.ai.find(a => a.id === id);
+  }
+
+  // AI 基地的地块是否有一块与玩家领地相邻（能否吞并）
+  adjacentToPlayer(ai: AiBase): boolean {
+    const s = aiPlots(ai);
+    for (let y = ai.py; y < ai.py + s; y++) {
+      for (let x = ai.px; x < ai.px + s; x++) {
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx, ny = y + dy;
+          if (nx >= 0 && ny >= 0 && nx < REGION_PLOTS && ny < REGION_PLOTS && this.ownedSet.has(ny * REGION_PLOTS + nx)) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // 抢走 AI 仓库存量的 50%，仓库放不下的作废；对方进入免战
+  loot(ai: AiBase, now: number): LootResult {
+    advanceAi(ai, now);
+    const cap = this.storageCap();
+    const loot = {} as Record<ResourceId, number>, kept = {} as Record<ResourceId, number>;
+    for (const r of RESOURCES) {
+      loot[r] = Math.floor(ai.res[r] * LOOT_SHARE);
+      ai.res[r] -= loot[r];
+      kept[r] = Math.max(0, Math.min(loot[r], cap[r] - this.state.res[r]));
+      this.state.res[r] += kept[r];
+    }
+    ai.protectedUntil = now + PROTECTION_HOURS * 3600_000;
+    return { loot, kept };
+  }
+
+  // 吞并价格 = 这个基地全部地块按买地公式依次计算的总价
+  annexCost(ai: AiBase): number {
+    let total = 0, n = this.state.plotsBought;
+    const s = aiPlots(ai);
+    for (let y = ai.py; y < ai.py + s; y++) {
+      for (let x = ai.px; x < ai.px + s; x++) total += this.priceAt(++n, y * REGION_PLOTS + x);
+    }
+    return total;
+  }
+
+  canAnnex(ai: AiBase): true | string {
+    if (!this.adjacentToPlayer(ai)) return '只能吞并与领地相邻的基地';
+    return this.state.res.gold >= this.annexCost(ai) ? true : '金币不足';
+  }
+
+  // 吞并：地块和建筑归玩家，原市政厅拆为空地
+  annex(ai: AiBase): true | string {
+    const ok = this.canAnnex(ai);
+    if (ok !== true) return ok;
+    this.state.res.gold -= this.annexCost(ai);
+    const s = aiPlots(ai);
+    for (let y = ai.py; y < ai.py + s; y++) {
+      for (let x = ai.px; x < ai.px + s; x++) {
+        const p = y * REGION_PLOTS + x;
+        this.state.owned.push(p);
+        this.ownedSet.add(p);
+        this.state.plotsBought++;
+      }
+    }
+    const ox = ai.px * PLOT_SIZE, oy = ai.py * PLOT_SIZE;
+    for (const b of generateAiLayout(ai).buildings) {
+      const id = (b.skin ?? b.defId) as BaseBuildingId;
+      if (b.defId === 'hq' || !(id in BASE_BUILDINGS)) continue;
+      const placed: PlacedBuilding = { uid: this.state.nextUid++, defId: id, x: ox + b.x, y: oy + b.y };
+      this.state.buildings.push(placed);
+      this.stamp(placed, placed.uid);
+    }
+    this.state.ai = this.state.ai.filter(a => a.id !== ai.id);
+    this.rebuildAiPlots();
+    return true;
+  }
+
+  // ---------- 容量与人口 ----------
 
   storageCap(): Record<ResourceId, number> {
     const cap = { ...HALL_STORAGE };
@@ -110,8 +227,34 @@ export class Base {
     return cap;
   }
 
+  // 住房上限（市民和士兵共用）
   popCap(): number {
     return this.state.buildings.reduce((n, b) => n + (baseDef(b.defId).popCap ?? 0), 0);
+  }
+
+  // 士兵占用的人口（含伤员）
+  soldierPop(): number {
+    let n = 0;
+    for (const [id, c] of Object.entries(this.state.army) as [DefId, number][]) n += (TRAINING[id]?.pop ?? 1) * c;
+    for (const w of this.state.wounded) n += TRAINING[w.defId]?.pop ?? 1;
+    return n;
+  }
+
+  // 部队每小时吃掉的粮食
+  armyFood(): number {
+    let n = 0;
+    for (const [id, c] of Object.entries(this.state.army) as [DefId, number][]) n += (TRAINING[id]?.food ?? 1) * c;
+    for (const w of this.state.wounded) n += TRAINING[w.defId]?.food ?? 1;
+    return n;
+  }
+
+  // 粮食吃光了：部队饿着肚子不能出击
+  hungry(): boolean {
+    return this.armyFood() > 0 && this.state.res.food <= 0;
+  }
+
+  armySize(): number {
+    return Object.values(this.state.army).reduce((n, c) => n + (c ?? 0), 0);
   }
 
   // ---------- 资源 ----------
@@ -128,6 +271,55 @@ export class Base {
     for (const r of RESOURCES) {
       this.state.res[r] = Math.min(cap[r], this.state.res[r] - sign * (cost[r] ?? 0));
     }
+  }
+
+  // ---------- 征兵与维修 ----------
+
+  canRecruit(defId: DefId, n = 1): true | string {
+    const t = TRAINING[defId];
+    if (!t) return '不能征召';
+    const cost: Amounts = {};
+    for (const r of RESOURCES) if (t.cost[r]) cost[r] = t.cost[r]! * n;
+    const money = this.canAfford(cost);
+    if (money !== true) return money;
+    return this.state.pop >= t.pop * n ? true : '可征召的市民不足';
+  }
+
+  recruit(defId: DefId, n = 1): true | string {
+    const ok = this.canRecruit(defId, n);
+    if (ok !== true) return ok;
+    const t = TRAINING[defId]!;
+    for (let k = 0; k < n; k++) this.pay(t.cost);
+    this.state.pop -= t.pop * n;
+    this.state.army[defId] = (this.state.army[defId] ?? 0) + n;
+    return true;
+  }
+
+  repairCost(w: Wounded): Amounts {
+    const t = TRAINING[w.defId], cost: Amounts = {};
+    if (!t) return cost;
+    for (const r of RESOURCES) if (t.cost[r]) cost[r] = Math.ceil(t.cost[r]! * (1 - w.hp) * REPAIR_RATE);
+    return cost;
+  }
+
+  repairAllCost(): Amounts {
+    const total: Amounts = {};
+    for (const w of this.state.wounded) {
+      const c = this.repairCost(w);
+      for (const r of RESOURCES) if (c[r]) total[r] = (total[r] ?? 0) + c[r]!;
+    }
+    return total;
+  }
+
+  repairAll(): true | string {
+    if (!this.state.wounded.length) return '没有需要维修的部队';
+    const cost = this.repairAllCost();
+    const ok = this.canAfford(cost);
+    if (ok !== true) return ok;
+    this.pay(cost);
+    for (const w of this.state.wounded) this.state.army[w.defId] = (this.state.army[w.defId] ?? 0) + 1;
+    this.state.wounded = [];
+    return true;
   }
 
   // ---------- 建造 ----------
@@ -193,14 +385,19 @@ export class Base {
 
   // ---------- 买地 ----------
 
-  plotPrice(plot: number): number {
-    const n = this.state.plotsBought + 1;
+  // 第 n 块地的价格
+  private priceAt(n: number, plot: number): number {
     return Math.round(500 * Math.pow(n, 1.5) * TERRAIN_PRICE[this.terrain[plot]]);
+  }
+
+  plotPrice(plot: number): number {
+    return this.priceAt(this.state.plotsBought + 1, plot);
   }
 
   canBuyPlot(plot: number): true | string {
     if (plot < 0 || plot >= REGION_PLOTS * REGION_PLOTS) return '超出区域';
     if (this.ownedSet.has(plot)) return '已经是你的领地';
+    if (this.aiPlot.has(plot)) return '这是 AI 基地的领地，打下来才能吞并';
     const px = plot % REGION_PLOTS, py = Math.floor(plot / REGION_PLOTS);
     const adjacent = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
       const nx = px + dx, ny = py + dy;

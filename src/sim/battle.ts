@@ -33,6 +33,7 @@ export interface Entity {
   tileX: number; // 建筑占地左上角
   tileY: number;
   alive: boolean;
+  skin: string | null; // 显示成哪种基地建筑（民用建筑用），只影响画面
   inside: number | null; // 步兵：驻防在哪座工事里
   garrison: number[]; // 工事：里面驻防的步兵
   order: Order | null;
@@ -77,7 +78,7 @@ export class Battle {
   constructor(readonly grid: Grid, private readonly rng: Rng) {}
 
   // 建筑的 (x, y) 是占地左上角格子；移动单位的 (x, y) 是格子坐标（可带小数）
-  spawn(defId: DefId, side: Side, x: number, y: number, stance: Stance = 'hold'): Entity {
+  spawn(defId: DefId, side: Side, x: number, y: number, stance: Stance = 'hold', skin: string | null = null): Entity {
     const def = DEFS[defId];
     const building = def.size > 0;
     const cx = building ? x + def.size / 2 : x;
@@ -92,7 +93,7 @@ export class Battle {
       path: [], pathTargetKey: '', repathIn: 0,
       tileX: Math.floor(x), tileY: Math.floor(y),
       alive: true,
-      inside: null, garrison: [], order: null,
+      skin, inside: null, garrison: [], order: null,
     };
     if (building) this.grid.setOccupant(e.tileX, e.tileY, def.size, e.id);
     this.entities.push(e);

@@ -3,12 +3,25 @@ import type { DamageType } from '../data/combat';
 import { DEFS, type DefId } from '../data/units';
 import { Battle, isMobile, type Entity, type Stance } from '../sim/battle';
 import { autoDeploy, type Deployment } from '../sim/deploy';
-import { createPrototypeBattle, ENEMY_HQ_CENTER, MAP_H, MAP_W } from '../sim/scenario';
+import type { Point } from '../sim/grid';
+import { createPrototypeBattle, ENEMY_HQ_CENTER, MAP_W as PROTO_MAP } from '../sim/scenario';
+import { createAiBattle, settleSortie, type AiBattle, type Roster, type SortieReport } from '../sim/world/sortie';
+import type { AiBase } from '../sim/world/ai';
+import { save, session } from './session';
 import { Hud } from '../ui/hud';
 import { footprintDiamond, pointsOf, TILE_H, tileDiamond, toScreen, toWorld } from './iso';
-import { CUBE_HEIGHT, makeTextures, textureKey } from './textures';
+import { BASE_INSET, CUBE_HEIGHT, makeBaseTextures, makeTextures, textureKey } from './textures';
 
 export type Phase = 'deploy' | 'battle' | 'result';
+
+// 出击（打 AI 基地，结果写回存档）或战斗原型（开发调试用的固定战场）
+export interface BattleInit {
+  mode: 'sortie' | 'prototype';
+  aiId?: number;
+  roster?: Roster;
+}
+
+const AI_TINT = 0xff9a9a;
 
 interface Effect {
   kind: 'line' | 'ring';
@@ -38,6 +51,15 @@ export class BattleScene extends Phaser.Scene {
   deployedCounts: Partial<Record<DefId, number>> = {};
   selected = new Set<number>(); // 交战时框选中的我方部队
 
+  mode: BattleInit['mode'] = 'prototype';
+  ai: AiBase | null = null;
+  report: SortieReport | null = null; // 出击结算结果
+  annexed = false;
+  private roster: Roster = {};
+  private fight: AiBattle | null = null;
+  private mapW = PROTO_MAP;
+  private mapH = PROTO_MAP;
+  private hqCenter: Point = ENEMY_HQ_CENTER;
   private seed = 1;
   private acc = 0;
   private sprites = new Map<number, Phaser.GameObjects.Image>();
@@ -58,6 +80,13 @@ export class BattleScene extends Phaser.Scene {
     super('battle');
   }
 
+  init(data: BattleInit): void {
+    this.mode = data?.mode ?? 'prototype';
+    this.roster = { ...(data?.roster ?? {}) };
+    this.ai = this.mode === 'sortie' && data.aiId !== undefined ? session().base.getAi(data.aiId) ?? null : null;
+    if (this.mode === 'sortie' && !this.ai) this.mode = 'prototype';
+  }
+
   create(): void {
     // 场景可能是从基地切回来的，清掉上一次的残留
     this.sprites = new Map();
@@ -65,11 +94,11 @@ export class BattleScene extends Phaser.Scene {
     this.effects = [];
     this.selected = new Set();
     makeTextures(this);
+    makeBaseTextures(this);
     this.terrain = this.add.graphics().setDepth(-1000);
     this.zone = this.add.graphics().setDepth(-999);
     this.ghost = this.add.graphics().setDepth(-998);
     this.overlay = this.add.graphics().setDepth(1e6);
-    this.setupCamera();
     this.setupInput();
     this.hud = new Hud(this);
     this.events.once('shutdown', () => this.hud.destroy());
@@ -88,9 +117,22 @@ export class BattleScene extends Phaser.Scene {
     for (const r of this.rocks) r.destroy();
     this.rocks = [];
     this.effects = [];
-    const { battle, deployment } = createPrototypeBattle(this.seed++);
-    this.battle = battle;
-    this.deployment = deployment;
+    this.report = null;
+    this.annexed = false;
+    if (this.mode === 'sortie' && this.ai) {
+      this.fight = createAiBattle(this.ai, this.roster, Date.now() % 1e9);
+      this.battle = this.fight.battle;
+      this.deployment = this.fight.deployment;
+      this.mapW = this.mapH = this.fight.mapSize;
+      this.hqCenter = this.fight.hqCenter;
+    } else {
+      const { battle, deployment } = createPrototypeBattle(this.seed++);
+      this.battle = battle;
+      this.deployment = deployment;
+      this.mapW = this.mapH = PROTO_MAP;
+      this.hqCenter = ENEMY_HQ_CENTER;
+    }
+    this.setupCamera();
     this.tool = null;
     this.paused = false;
     this.speed = 1;
@@ -111,7 +153,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   autoDeploy(): void {
-    autoDeploy(this.deployment, ENEMY_HQ_CENTER, this.stance);
+    autoDeploy(this.deployment, this.hqCenter, this.stance);
     this.hud.render();
   }
 
@@ -146,6 +188,30 @@ export class BattleScene extends Phaser.Scene {
     this.battle.retreat();
   }
 
+  // 出击结束：结算伤亡、掠夺，写回存档
+  private settle(): void {
+    if (this.mode !== 'sortie' || !this.ai || !this.fight || this.report) return;
+    this.report = settleSortie(session().base, this.ai, this.fight, this.roster, Date.now());
+    save();
+  }
+
+  // 胜利结算时吞并（必须相邻且付得起）
+  annexInfo(): { cost: number; ok: true | string } | null {
+    const base = session().base;
+    if (this.mode !== 'sortie' || !this.ai || this.report?.outcome !== 'victory' || this.annexed) return null;
+    if (!base.adjacentToPlayer(this.ai)) return null;
+    return { cost: base.annexCost(this.ai), ok: base.canAnnex(this.ai) };
+  }
+
+  annex(): void {
+    if (!this.ai) return;
+    if (session().base.annex(this.ai) === true) {
+      this.annexed = true;
+      save();
+    }
+    this.hud.render();
+  }
+
   // ---------- 每帧 ----------
 
   update(_time: number, deltaMs: number): void {
@@ -162,6 +228,7 @@ export class BattleScene extends Phaser.Scene {
       }
       if (this.battle.outcome) {
         this.acc = 0;
+        this.settle();
         this.setPhase('result');
       }
     }
@@ -213,8 +280,8 @@ export class BattleScene extends Phaser.Scene {
     const g = this.terrain;
     g.clear();
     const grass = [0x4f7d36, 0x55843a, 0x4a7633];
-    for (let ty = 0; ty < MAP_H; ty++) {
-      for (let tx = 0; tx < MAP_W; tx++) {
+    for (let ty = 0; ty < this.mapH; ty++) {
+      for (let tx = 0; tx < this.mapW; tx++) {
         const n = (tx * 7 + ty * 13 + ((tx * ty) % 5)) % 3;
         g.fillStyle(grass[n]);
         g.fillPoints(pointsOf(tileDiamond(tx, ty)), true);
@@ -226,12 +293,12 @@ export class BattleScene extends Phaser.Scene {
       }
     }
     g.lineStyle(1, 0x000000, 0.08);
-    for (let i = 0; i <= MAP_W; i++) {
-      const a = toScreen(i, 0), b = toScreen(i, MAP_H);
+    for (let i = 0; i <= this.mapW; i++) {
+      const a = toScreen(i, 0), b = toScreen(i, this.mapH);
       g.lineBetween(a.sx, a.sy, b.sx, b.sy);
     }
-    for (let j = 0; j <= MAP_H; j++) {
-      const a = toScreen(0, j), b = toScreen(MAP_W, j);
+    for (let j = 0; j <= this.mapH; j++) {
+      const a = toScreen(0, j), b = toScreen(this.mapW, j);
       g.lineBetween(a.sx, a.sy, b.sx, b.sy);
     }
   }
@@ -242,8 +309,8 @@ export class BattleScene extends Phaser.Scene {
     if (this.phase !== 'deploy') return;
     // 投送区按被几座敌方塔覆盖着色：绿 0、黄 1、橙 2、红 3+
     const colors = [0x7dff8a, 0xffe14a, 0xff9a3c, 0xff4d4d];
-    for (let ty = 0; ty < MAP_H; ty++) {
-      for (let tx = 0; tx < MAP_W; tx++) {
+    for (let ty = 0; ty < this.mapH; ty++) {
+      for (let tx = 0; tx < this.mapW; tx++) {
         if (!this.deployment.inDropZone(tx, ty)) continue;
         g.fillStyle(colors[Math.min(3, this.deployment.threatAt(tx, ty))], 0.4);
         g.fillPoints(pointsOf(tileDiamond(tx, ty)), true);
@@ -255,7 +322,7 @@ export class BattleScene extends Phaser.Scene {
     const g = this.ghost;
     g.clear();
     const h = this.hover;
-    if (!h || h.x < 0 || h.y < 0 || h.x >= MAP_W || h.y >= MAP_H) return;
+    if (!h || h.x < 0 || h.y < 0 || h.x >= this.mapW || h.y >= this.mapH) return;
     let ok: boolean | null = null;
     if (this.phase === 'deploy' && this.tool) ok = this.deployment.canPlace(this.tool, h.x, h.y) === true;
     if (ok === null) {
@@ -285,7 +352,8 @@ export class BattleScene extends Phaser.Scene {
         continue;
       }
       if (!s) {
-        s = this.add.image(0, 0, textureKey(e.defId, e.side));
+        s = this.add.image(0, 0, e.skin ? `bb-${e.skin}` : textureKey(e.defId, e.side));
+        if (e.skin && e.side === 'enemy') s.setTint(AI_TINT);
         if (e.def.size > 0) s.setOrigin(0.5, 1);
         else if (e.def.kind === 'tank') s.setOrigin(0.5, 1);
         else s.setOrigin(0.5, 21 / 24);
@@ -294,7 +362,7 @@ export class BattleScene extends Phaser.Scene {
       const x = e.px + (e.x - e.px) * alpha, y = e.py + (e.y - e.py) * alpha;
       const p = toScreen(x, y);
       if (e.def.size > 0) {
-        s.setPosition(p.sx, p.sy + 0.8 * e.def.size * (TILE_H / 2));
+        s.setPosition(p.sx, p.sy + (e.skin ? BASE_INSET : 0.8) * e.def.size * (TILE_H / 2));
       } else if (e.def.kind === 'tank') {
         s.setPosition(p.sx, p.sy + s.width / 4);
         // 只区分朝屏幕左还是右
@@ -462,14 +530,14 @@ export class BattleScene extends Phaser.Scene {
 
   private setupCamera(): void {
     const cam = this.cameras.main;
-    const left = toScreen(0, MAP_H).sx, right = toScreen(MAP_W, 0).sx;
-    const bottom = toScreen(MAP_W, MAP_H).sy;
+    const left = toScreen(0, this.mapH).sx, right = toScreen(this.mapW, 0).sx;
+    const bottom = toScreen(this.mapW, this.mapH).sy;
     cam.setBounds(left - 400, -400, right - left + 800, bottom + 800);
-    const c = toScreen(MAP_W / 2, MAP_H / 2);
+    const c = toScreen(this.mapW / 2, this.mapH / 2);
     cam.centerOn(c.sx, c.sy);
     // 开局缩放到整张战场都能看见
-    const mapW = (MAP_W + MAP_H) * (TILE_H) + 80, mapH = (MAP_W + MAP_H) * (TILE_H / 2) + 120;
-    cam.setZoom(Phaser.Math.Clamp(Math.min(cam.width / mapW, cam.height / mapH), 0.5, 1.5));
+    const viewW = (this.mapW + this.mapH) * TILE_H + 80, viewH = (this.mapW + this.mapH) * (TILE_H / 2) + 120;
+    cam.setZoom(Phaser.Math.Clamp(Math.min(cam.width / viewW, cam.height / viewH), 0.4, 1.5));
   }
 
   private setupInput(): void {

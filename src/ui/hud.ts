@@ -1,4 +1,5 @@
 import { DAMAGE_TYPE_NAME } from '../data/combat';
+import { RESOURCE_NAME, RESOURCES } from '../data/economy';
 import { DEFS, type DefId, type UnitDef } from '../data/units';
 import { isMobile, type Stance } from '../sim/battle';
 import type { BattleScene } from '../game/BattleScene';
@@ -41,6 +42,7 @@ export class Hud {
       case 'retreat': s.retreat(); break;
       case 'again': s.newBattle(); break;
       case 'home': s.goHome(); break;
+      case 'annex': s.annex(); break;
     }
   }
 
@@ -83,7 +85,7 @@ export class Hud {
     }).join('');
     const anyUnit = d.placed().some(e => e.def.speed > 0);
     return `
-      <h2>部署部队</h2>
+      <h2>${s.ai ? `进攻 AI 基地 · Lv${s.ai.level}` : '部署部队（战斗原型）'}</h2>
       ${btn('home', '', '← 返回基地')}
       <p>敌方基地四周的一圈空地是投送区，部队只能摆在这里。出击不能修建防御塔或工事。</p>
       <p class="legend">投送区被几座敌方塔的射程覆盖：
@@ -142,8 +144,8 @@ export class Hud {
     const rows = (Object.entries(s.deployedCounts) as [DefId, number][]).map(([id, n]) =>
       `<tr><td>${DEFS[id].name}</td><td>${n}</td><td>${n - (alive[id] ?? 0)}</td></tr>`).join('');
     const note = outcome === 'victory'
-      ? '敌方基地已被攻破。掠夺 50% 资源将在阶段 3 接入。'
-      : outcome === 'defeat' ? '我方可移动部队全军覆没。' : '部队已撤回，剩余部队保留，拿不到掠夺。';
+      ? '敌方基地已被攻破。'
+      : outcome === 'defeat' ? '我方可移动部队全军覆没。' : '部队已撤回，拿不到掠夺。';
     return `
       <h2 class="outcome ${outcome}">${OUTCOME_TEXT[outcome]}</h2>
       <p>用时 ${formatTime(b.time)}。${note}</p>
@@ -151,8 +153,31 @@ export class Hud {
         <tr><th>我方单位</th><th>投入</th><th>损失</th></tr>
         ${rows}
       </table>
-      ${btn('again', '', '再来一局（新地图）', { primary: true })}
-      ${btn('home', '', '← 返回基地')}`;
+      ${this.sortieHtml()}
+      ${s.mode === 'prototype' ? btn('again', '', '再来一局（新地图）', { primary: true }) : ''}
+      ${btn('home', '', '← 返回基地', { primary: s.mode === 'sortie' })}`;
+  }
+
+  // 出击结算：伤员、掠夺所得、吞并
+  private sortieHtml(): string {
+    const s = this.scene, r = s.report;
+    if (!r) return '';
+    const parts: string[] = [];
+    if (r.wounded) parts.push(`<p>${r.wounded} 支部队带伤回到基地，在国防部花资源维修后才能再出击。</p>`);
+    if (r.loot) {
+      const rows = RESOURCES.filter(k => r.loot!.loot[k] > 0).map(k => {
+        const lost = r.loot!.loot[k] - r.loot!.kept[k];
+        return `<tr><td>${RESOURCE_NAME[k]}</td><td class="pos">+${r.loot!.kept[k]}</td><td>${lost > 0 ? `<span class="neg">${lost} 放不下作废</span>` : ''}</td></tr>`;
+      }).join('');
+      parts.push(`<h3>掠夺（对方仓库的 50%，对方进入 24 小时免战）</h3><table class="stats">${rows}</table>`);
+    }
+    const annex = s.annexInfo();
+    if (annex) {
+      parts.push(`<h3>吞并</h3><p>这个基地与你的领地相邻。花 ${annex.cost} 金币吞并：领地和建筑归你，市政厅拆掉。</p>
+        ${btn('annex', '', `吞并（${annex.cost} 金币）`, { disabled: annex.ok !== true, title: annex.ok === true ? '' : annex.ok })}`);
+    }
+    if (s.annexed) parts.push('<p class="pos">已吞并，回到基地就能看到新领地。</p>');
+    return parts.join('');
   }
 
   private helpHtml(): string {

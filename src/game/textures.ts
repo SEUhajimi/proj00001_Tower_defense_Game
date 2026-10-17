@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { baseDef, BASE_BUILDINGS, type BaseBuildingId } from '../data/economy';
 import { DEFS, type DefId } from '../data/units';
 import type { Side } from '../sim/battle';
 import { TILE_W } from './iso';
@@ -117,6 +118,25 @@ export function makeTextures(scene: Phaser.Scene): void {
     g.clear();
     drawCube(g, TILE_W * 0.7, 12, 0x9a9a9a, 0x7a7a7a);
     g.generateTexture('rock', TILE_W * 0.7, TILE_W * 0.35 + 12);
+  }
+  g.destroy();
+}
+
+// ---------- 基地建筑 ----------
+
+export const BASE_INSET = 0.86; // 建筑比占地略小一圈，看得出格子
+export const BASE_CUBE_H: Record<number, number> = { 1: 22, 2: 26, 3: 34 };
+
+// 基地建筑的贴图（基地场景，以及战斗里 AI 基地的民用建筑共用）
+export function makeBaseTextures(scene: Phaser.Scene): void {
+  const g = scene.make.graphics({}, false);
+  for (const id of Object.keys(BASE_BUILDINGS) as BaseBuildingId[]) {
+    const key = `bb-${id}`;
+    if (scene.textures.exists(key)) continue;
+    const d = baseDef(id), w = TILE_W * d.size * BASE_INSET, h = BASE_CUBE_H[d.size] ?? 26;
+    g.clear();
+    drawCube(g, w, h, d.color, id === 'hall' ? 0x5f7aa8 : shade(d.color, 0.75));
+    g.generateTexture(key, w, w / 2 + h);
   }
   g.destroy();
 }

@@ -2,7 +2,7 @@ import { Base, newBaseState, type BaseState } from './base';
 import { advanceTo, type ResourceMap } from './economy';
 
 // 本地存档。阶段 5 会做正式存档，联机后改为服务器保存；结算逻辑不变。
-const KEY = 'baseguard.base.v1';
+const KEY = 'baseguard.base.v2'; // v2：加入世界地图、AI 基地和部队，旧存档作废
 
 export interface Loaded {
   base: Base;
@@ -15,7 +15,7 @@ export function loadBase(now: number = Date.now()): Loaded {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as BaseState;
-      if (parsed.version === 1) state = parsed;
+      if (parsed.version === 2) state = parsed;
     }
   } catch {
     state = null;
