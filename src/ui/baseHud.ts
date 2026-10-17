@@ -2,16 +2,18 @@ import {
   baseDef, MINISTRY_NAME, RESOURCE_NAME, RESOURCES, TAX_PER_PERSON, TERRAIN_NAME,
   type Amounts, type BaseBuildingId, type Ministry, type ResourceId,
 } from '../data/economy';
-import { LOOT_SHARE } from '../data/ai';
+import { AI_ATTACK, LOOT_SHARE } from '../data/ai';
 import { TRAINABLE, TRAINING } from '../data/army';
-import { DEFS, type DefId } from '../data/units';
+import { STAGE_NAME, TECH_REQUIRES, TECH_STAGES } from '../data/tech';
+import { DEFS, getDef, MOBILE_UNITS, type DefId } from '../data/units';
 import { BUILDABLE } from '../sim/base/base';
 import { hourlyRates, powerInfo } from '../sim/base/economy';
 import { aiCapacity, isProtected } from '../sim/world/ai';
 import type { Roster } from '../sim/world/sortie';
 import type { BaseScene } from '../game/BaseScene';
 
-// 基地模式右侧面板：资源总览、市政厅四部门、选中的建筑或 AI 基地（编组出击）、离线收益。
+// 基地模式右侧面板：资源总览、市政厅四部门（科技部含科技树，国防部含征兵和演习）、
+// 选中的建筑或 AI 基地（编组出击）、离线收益。
 
 const SHORT: Record<ResourceId, string> = {
   gold: '金', food: '粮', wood: '木', stone: '石', iron: '铁', oil: '油', steel: '钢', fuel: '燃', ammo: '弹', electronics: '电子',
@@ -28,6 +30,7 @@ const DEFENSE_GROUPS: [string, BaseBuildingId[]][] = [
 export class BaseHud {
   private root = document.getElementById('hud')!;
   private tab: Ministry = 'civil';
+  private drill: Roster = { ...AI_ATTACK[1] }; // 演习进攻方的编制
   private timer: number;
   private readonly onClick = (ev: Event) => {
     const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-act]');
@@ -36,6 +39,7 @@ export class BaseHud {
   private readonly onInput = (ev: Event) => {
     const el = ev.target as HTMLInputElement;
     if (el.dataset.input === 'tax') { this.scene.setTax(Number(el.value) / 100); this.refresh(); }
+    if (el.dataset.drill) this.drill[el.dataset.drill as DefId] = Math.max(0, Math.min(99, Math.floor(Number(el.value) || 0)));
   };
 
   constructor(private scene: BaseScene) {
@@ -64,6 +68,10 @@ export class BaseHud {
       case 'proto': s.enterPrototype(); break;
       case 'recruit': { const [id, n] = arg!.split(':'); s.recruit(id as DefId, Number(n)); break; }
       case 'repair': s.repairAll(); break;
+      case 'research': s.research(arg as DefId); break;
+      case 'drillPreset': this.drill = { ...AI_ATTACK[Number(arg)] }; this.render(); break;
+      case 'drillClear': this.drill = {}; this.render(); break;
+      case 'drill': s.startDrill(this.drill); break;
       case 'sortie': s.startSortie(this.readRoster()); break;
       case 'ff': s.fastForward(1); break;
       case 'reset': if (confirm('清空存档，重新开局？')) s.resetSave(); break;
@@ -126,7 +134,8 @@ export class BaseHud {
     set('msg', s.message);
     // 买不起的建筑、征不起的兵按钮置灰
     this.root.querySelectorAll<HTMLButtonElement>('button[data-act="build"]').forEach(el => {
-      const ok = b.canAfford(baseDef(el.dataset.arg as BaseBuildingId).cost);
+      const id = el.dataset.arg as BaseBuildingId;
+      const ok = id in DEFS && !b.researched(id as DefId) ? '尚未研发，去科技部' : b.canAfford(baseDef(id).cost);
       el.disabled = ok !== true;
       el.title = ok === true ? '' : ok;
     });
@@ -136,6 +145,12 @@ export class BaseHud {
       el.disabled = ok !== true;
       el.title = ok === true ? '' : ok;
     });
+    this.root.querySelectorAll<HTMLButtonElement>('button[data-act="research"]').forEach(el => {
+      const ok = b.canResearch(el.dataset.arg as DefId);
+      el.disabled = ok !== true;
+      el.title = ok === true ? '' : ok;
+    });
+    set('rp', `${Math.floor(st.research)}`);
     const ai = s.selectedAiBase();
     if (ai) {
       const now = Date.now();
@@ -170,7 +185,7 @@ export class BaseHud {
         { active: s.mode === 'build' && s.tool === id });
     };
     if (this.tab === 'defense') {
-      return this.armyHtml() + DEFENSE_GROUPS.map(([title, ids]) => `<h3>${title}</h3>${ids.map(card).join('')}`).join('');
+      return this.armyHtml() + this.drillHtml() + DEFENSE_GROUPS.map(([title, ids]) => `<h3>${title}</h3>${ids.map(card).join('')}`).join('');
     }
     const list = BUILDABLE.filter(id => baseDef(id).ministry === this.tab).map(card).join('');
     if (this.tab === 'finance') {
@@ -182,16 +197,46 @@ export class BaseHud {
         <p class="hint">每位市民按税率缴税（100% 时每小时 ${TAX_PER_PERSON} 金）。税率越高，人口增长越慢，超过 66% 停止增长。</p>
         <h3>建筑</h3>${list}`;
     }
-    if (this.tab === 'tech') {
-      return `${list}<p class="hint">科研点用于阶段 4 的科技树，现在先累计着。当前累计 ${Math.floor(this.scene.base.state.research)} 点。</p>`;
-    }
+    if (this.tab === 'tech') return this.techHtml() + `<h3>建筑</h3>${list}`;
     return list;
   }
 
-  // 国防部 · 征兵：每个兵种的造价、占用人口、现有数量；伤员维修
+  // 科技部 · 科技树：六个阶段，每项单独研发
+  private techHtml(): string {
+    const b = this.scene.base;
+    const stages = TECH_STAGES.map((st, k) => {
+      const open = b.stageOpen(k);
+      const head = k === 0
+        ? `<h3>${STAGE_NAME[k]}　<small>开局自带</small></h3>`
+        : `<h3>${STAGE_NAME[k]}　<small>每项 科研 ${st.research} · 金 ${st.gold}${open ? '' : ' · 上一阶段研发过半后开放'}</small></h3>`;
+      const rows = st.items.map(id => {
+        const done = b.researched(id), req = TECH_REQUIRES[id];
+        const note = done ? '<span class="pos">已研发</span>' : req && !b.researched(req) ? `<small>需要先研发${DEFS[req].name}</small>` : '';
+        return `<div class="unitrow${done ? ' done' : ''}"><div><b>${DEFS[id].name}</b> ${note}<small class="cost">${unitBrief(id)}</small></div>
+          ${done || k === 0 ? '' : btn('research', id, '研发')}</div>`;
+      }).join('');
+      return head + rows;
+    }).join('');
+    return `<h3>科技树　<small>科研点 <b data-v="rp"></b></small></h3>
+      <p class="hint">市政厅和研究所每小时产出科研点。研发后才能征召对应兵种、修建对应的塔。</p>${stages}`;
+  }
+
+  // 国防部 · 演习：配置进攻方（可以选还没研发的兵种），电脑指挥它进攻自己的基地
+  private drillHtml(): string {
+    const presets = Object.keys(AI_ATTACK).map(l => btn('drillPreset', l, `Lv${l}`)).join('');
+    const inputs = MOBILE_UNITS.map(id =>
+      `<label class="pick">${DEFS[id].name}<input type="number" min="0" max="99" value="${this.drill[id] ?? 0}" data-drill="${id}"></label>`).join('');
+    return `<h3>演习</h3>
+      <p class="hint">电脑带着你配置的军队进攻自己的基地，检验布防。任何兵种都能选，包括还没研发的。演习不造成任何损失，也没有奖励。</p>
+      <div class="row presets"><span>套用 AI 军队：</span>${presets}${btn('drillClear', '', '清空')}</div>
+      <div class="roster">${inputs}</div>
+      ${btn('drill', '', '开始演习')}`;
+  }
+
+  // 国防部 · 征兵：已研发兵种的造价、占用人口、现有数量；伤员维修
   private armyHtml(): string {
     const b = this.scene.base;
-    const rows = TRAINABLE.map(id => {
+    const rows = TRAINABLE.filter(id => b.researched(id)).map(id => {
       const t = TRAINING[id]!;
       return `<div class="unitrow">
         <div><b>${DEFS[id].name}</b> <span class="count">×${b.state.army[id] ?? 0}</span>
@@ -204,7 +249,7 @@ export class BaseHud {
       ? `<div class="unitrow"><div>伤员 <b>${w.length}</b> 名<small class="cost">维修费 ${costText(b.repairAllCost())}</small></div>${btn('repair', '', '全部维修')}</div>`
       : '';
     return `<h3>征兵　<small>部队口粮 <b data-v="food-use"></b></small></h3>${rows}${repair}
-      <p class="hint">士兵从市民中征召，和市民共用住房；粮食吃光后部队不能出击。</p>`;
+      <p class="hint">士兵从市民中征召，和市民共用住房；粮食吃光后部队不能出击。更多兵种在科技部研发。</p>`;
   }
 
   // 选中的 AI 基地：情况、预计掠夺、编组出击
@@ -282,4 +327,12 @@ function fmtHours(h: number): string {
   if (h < 1) return `${Math.round(h * 60)} 分钟`;
   if (h < 48) return `${Math.round(h * 10) / 10} 小时`;
   return `${Math.round(h / 24 * 10) / 10} 天`;
+}
+
+// 科技树里的一行说明：兵种看造价，塔看造价
+function unitBrief(id: DefId): string {
+  const t = TRAINING[id];
+  if (t) return `征召 ${costText(t.cost)}`;
+  const d = getDef(id);
+  return d.cost ? `修建 ${costText(d.cost)}` : '';
 }

@@ -1,8 +1,10 @@
+import { START_TECH } from '../../data/tech';
 import { Base, newBaseState, type BaseState } from './base';
 import { advanceTo, type ResourceMap } from './economy';
 
 // 本地存档。阶段 5 会做正式存档，联机后改为服务器保存；结算逻辑不变。
-const KEY = 'baseguard.base.v2'; // v2：加入世界地图、AI 基地和部队，旧存档作废
+// 键名沿用 v2（v2 加入了世界地图、AI 基地和部队，更早的存档作废）；v3 加入科技树，v2 存档自动升级
+const KEY = 'baseguard.base.v2';
 
 export interface Loaded {
   base: Base;
@@ -14,8 +16,9 @@ export function loadBase(now: number = Date.now()): Loaded {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as BaseState;
-      if (parsed.version === 2) state = parsed;
+      const parsed = JSON.parse(raw) as BaseState | (Omit<BaseState, 'version' | 'tech'> & { version: 2 });
+      if (parsed.version === 2) state = { ...parsed, version: 3, tech: [...START_TECH] };
+      else if (parsed.version === 3) state = parsed;
     }
   } catch {
     state = null;

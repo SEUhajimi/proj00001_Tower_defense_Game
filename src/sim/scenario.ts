@@ -15,7 +15,7 @@ export const MAP_W = BASE_SIZE + DROP_RING * 2;
 export const MAP_H = MAP_W;
 
 // 敌方基地在地图上的范围（投送区以外）
-export const ENEMY_BASE_RECT = { x: DROP_RING, y: DROP_RING, size: BASE_SIZE };
+export const ENEMY_BASE_RECT = { x: DROP_RING, y: DROP_RING, w: BASE_SIZE, h: BASE_SIZE };
 
 // 以下坐标都是基地内坐标，生成时整体平移 DROP_RING
 const BUILT_AREA = { x0: 5, y0: 4, x1: 20, y1: 18 }; // 建筑区，岩石不会生成在这里

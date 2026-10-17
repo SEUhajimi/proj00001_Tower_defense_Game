@@ -4,7 +4,8 @@ import {
   baseDef, BASE_BUILDINGS, HALL_STORAGE, RESOURCE_NAME, RESOURCES, START_POP, START_RESOURCES, START_TAX,
   TERRAIN_NAME, TERRAIN_PRICE, type Amounts, type BaseBuildingId, type ResourceId, type Terrain,
 } from '../../data/economy';
-import type { DefId } from '../../data/units';
+import { START_TECH, TECH_REQUIRES, TECH_STAGES, techStage } from '../../data/tech';
+import { DEFS, type DefId } from '../../data/units';
 import { advanceAi, aiPlots, generateAiLayout, placeAiBases, type AiBase } from '../world/ai';
 import { generateTerrain, PLOT_SIZE, REGION_PLOTS, REGION_TILES, START_PLOT } from './terrain';
 
@@ -23,7 +24,7 @@ export interface Wounded {
 
 // 存档里保存的全部内容（地形和 AI 基地布局由种子重新生成，不存）
 export interface BaseState {
-  version: 2;
+  version: 3;
   seed: number;
   lastTick: number; // 上次结算到的时间戳（毫秒）
   owned: number[]; // 已拥有的地块编号
@@ -33,7 +34,8 @@ export interface BaseState {
   res: Record<ResourceId, number>;
   pop: number; // 市民（不含士兵）
   taxRate: number;
-  research: number; // 累计科研点（阶段 4 的科技树使用）
+  research: number; // 手上的科研点，研发科技时花掉
+  tech: DefId[]; // 已研发的兵种和塔
   army: Partial<Record<DefId, number>>; // 可以出击的部队
   wounded: Wounded[];
   ai: AiBase[];
@@ -46,13 +48,14 @@ export function newBaseState(seed: number, now: number): BaseState {
   }
   const mid = (START_PLOT.x0 + 1) * PLOT_SIZE + 1;
   return {
-    version: 2, seed, lastTick: now, owned, plotsBought: 0,
+    version: 3, seed, lastTick: now, owned, plotsBought: 0,
     buildings: [{ uid: 1, defId: 'hall', x: mid, y: mid }],
     nextUid: 2,
     res: { ...START_RESOURCES },
     pop: START_POP,
     taxRate: START_TAX,
     research: 0,
+    tech: [...START_TECH],
     army: { ...START_ARMY },
     wounded: [],
     ai: placeAiBases(seed, now),
@@ -167,7 +170,7 @@ export class Base {
     for (const r of RESOURCES) {
       loot[r] = Math.floor(ai.res[r] * LOOT_SHARE);
       ai.res[r] -= loot[r];
-      kept[r] = Math.max(0, Math.min(loot[r], cap[r] - this.state.res[r]));
+      kept[r] = Math.max(0, Math.min(loot[r], Math.floor(cap[r] - this.state.res[r])));
       this.state.res[r] += kept[r];
     }
     ai.protectedUntil = now + PROTECTION_HOURS * 3600_000;
@@ -273,11 +276,47 @@ export class Base {
     }
   }
 
+  // ---------- 科技 ----------
+
+  researched(id: DefId): boolean {
+    return techStage(id) < 0 || this.state.tech.includes(id);
+  }
+
+  // 第一阶段开局就开放；之后每个阶段要上一阶段研发过半才开放
+  stageOpen(stage: number): boolean {
+    if (stage <= 0) return true;
+    const prev = TECH_STAGES[stage - 1].items;
+    const done = prev.filter(id => this.state.tech.includes(id)).length;
+    return this.stageOpen(stage - 1) && done >= Math.ceil(prev.length / 2);
+  }
+
+  canResearch(id: DefId): true | string {
+    const stage = techStage(id);
+    if (stage < 0 || this.researched(id)) return '已研发';
+    if (!this.stageOpen(stage)) return '上一阶段研发过半后开放';
+    const req = TECH_REQUIRES[id];
+    if (req && !this.researched(req)) return `需要先研发${DEFS[req].name}`;
+    const { research, gold } = TECH_STAGES[stage];
+    if (this.state.research < research) return '科研点不足';
+    return this.state.res.gold >= gold ? true : '金币不足';
+  }
+
+  research(id: DefId): true | string {
+    const ok = this.canResearch(id);
+    if (ok !== true) return ok;
+    const { research, gold } = TECH_STAGES[techStage(id)];
+    this.state.research -= research;
+    this.state.res.gold -= gold;
+    this.state.tech.push(id);
+    return true;
+  }
+
   // ---------- 征兵与维修 ----------
 
   canRecruit(defId: DefId, n = 1): true | string {
     const t = TRAINING[defId];
     if (!t) return '不能征召';
+    if (!this.researched(defId)) return '尚未研发';
     const cost: Amounts = {};
     for (const r of RESOURCES) if (t.cost[r]) cost[r] = t.cost[r]! * n;
     const money = this.canAfford(cost);
@@ -341,6 +380,7 @@ export class Base {
   canBuild(defId: BaseBuildingId, tx: number, ty: number): true | string {
     const def = baseDef(defId);
     if (def.unique) return '不能再建';
+    if (defId in DEFS && !this.researched(defId as DefId)) return '尚未研发';
     const fit = this.fits(defId, tx, ty);
     if (fit !== true) return fit;
     return this.canAfford(def.cost);

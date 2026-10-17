@@ -118,3 +118,9 @@ html, body {
 #hud .selection table.stats { font-size: 12px; }
 #hud .selection button[data-act="sortie"] { background: var(--accent); text-align: center; font-weight: bold; }
 #hud .vitals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 8px; }
+
+#hud .unitrow.done { opacity: 0.7; }
+#hud .unitrow .pos { font-size: 11px; }
+#hud .presets { align-items: center; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; font-size: 12px; }
+#hud .presets button { flex: none; width: auto; padding: 3px 10px; }
+#hud button[data-act="drill"] { background: var(--accent); text-align: center; font-weight: bold; margin-bottom: 8px; }

@@ -1,12 +1,13 @@
 import { DAMAGE_TYPE_NAME } from '../data/combat';
 import { RESOURCE_NAME, RESOURCES } from '../data/economy';
 import { DEFS, type DefId, type UnitDef } from '../data/units';
-import { isMobile, type Stance } from '../sim/battle';
+import { isAir, isMobile, type Side, type Stance } from '../sim/battle';
 import type { BattleScene } from '../game/BattleScene';
 
 // 战斗界面右侧面板。阶段切换时 render() 重建结构，refresh() 定时刷新数字。
 
 const OUTCOME_TEXT = { victory: '胜利', defeat: '失败', retreat: '已撤退' } as const;
+const DRILL_OUTCOME_TEXT = { victory: '防守成功', defeat: '防线被突破', retreat: '演习已结束' } as const;
 
 export class Hud {
   private root = document.getElementById('hud')!;
@@ -36,6 +37,7 @@ export class Hud {
       case 'start': s.startBattle(); break;
       case 'all': s.setAllStance(arg as Stance); break;
       case 'selectAll': s.selectAll(); break;
+      case 'selType': s.selectType(arg as DefId); break;
       case 'clearSel': s.clearSelection(); break;
       case 'pause': s.paused = !s.paused; this.render(); break;
       case 'speed': s.speed = s.speed >= 4 ? 1 : s.speed * 2; this.render(); break;
@@ -67,11 +69,13 @@ export class Hud {
     };
     const b = s.battle;
     set('time', formatTime(b.time));
-    const mine = b.living('player'), theirs = b.living('enemy');
-    set('p-units', String(mine.filter(isMobile).length));
-    set('e-units', String(theirs.filter(isMobile).length));
-    set('e-towers', String(theirs.filter(e => e.def.kind === 'tower' || e.def.kind === 'fort').length));
-    set('e-hq', b.hqDown.enemy ? '已摧毁（敌方伤害 -30%）' : '完好');
+    const towers = (side: Side) => b.living(side).filter(e => e.def.kind === 'tower' || e.def.kind === 'fort').length;
+    set('p-units', String(b.living('player').filter(isMobile).length));
+    set('e-units', String(b.living('enemy').filter(isMobile).length));
+    set('p-towers', String(towers('player')));
+    set('e-towers', String(towers('enemy')));
+    const def: Side = b.attacker === 'player' ? 'enemy' : 'player';
+    set('hq', b.hqDown[def] ? `已摧毁（${def === 'enemy' ? '敌方' : '守军'}伤害 -30%）` : '完好');
     set('sel', String(s.selected.size));
   }
 
@@ -79,6 +83,7 @@ export class Hud {
 
   private deployHtml(): string {
     const s = this.scene, d = s.deployment;
+    if (s.mode === 'drill') return this.drillDeployHtml();
     const unitBtns = (Object.entries(d.roster) as [DefId, number][]).map(([id, n]) => {
       const def: UnitDef = DEFS[id];
       return btn('tool', id, `${def.name}<small>剩 ${n}</small>`, { active: s.tool === id, disabled: n <= 0, title: unitTip(def) });
@@ -107,21 +112,48 @@ export class Hud {
       ${this.helpHtml()}`;
   }
 
-  private battleHtml(): string {
+  // 演习：进攻方已由电脑布置好，玩家只看一眼就开始
+  private drillDeployHtml(): string {
     const s = this.scene;
+    const rows = (Object.entries(countBy(s.deployment.placed().map(e => e.defId))) as [DefId, number][])
+      .map(([id, n]) => `<tr><td>${DEFS[id].name}</td><td>${n}</td></tr>`).join('');
     return `
-      <h2>交战中 <span class="time" data-v="time"></span></h2>
+      <h2>演习 · 防守自己的基地</h2>
+      ${btn('home', '', '← 返回基地')}
+      <p>电脑带着下面这支军队从外圈进攻你的基地。你的塔、工事和部队都会参战；你可以在交战中框选自己的部队指挥。</p>
+      <p>演习结束后一切恢复原状，不消耗任何东西，也没有奖励。</p>
+      <p class="legend">外圈被你几座塔的射程覆盖：
+        <span style="color:#7dff8a">■ 0</span>
+        <span style="color:#ffe14a">■ 1</span>
+        <span style="color:#ff9a3c">■ 2</span>
+        <span style="color:#ff4d4d">■ 3+</span></p>
+      <h3>进攻方</h3>
+      <table class="stats"><tr><th>兵种</th><th>数量</th></tr>${rows}</table>
+      ${btn('start', '', '开始演习', { primary: true })}
+      ${this.helpHtml()}`;
+  }
+
+  private battleHtml(): string {
+    const s = this.scene, drill = s.mode === 'drill';
+    const myPlanes = [...new Set(s.battle.living('player').filter(e => isAir(e) && e.def.kind === 'bomber').map(e => e.defId))];
+    const planeBtns = myPlanes.length
+      ? `<div class="row" style="margin-top:6px">${myPlanes.map(id => btn('selType', id, `选中全部${DEFS[id].name}`)).join('')}</div>
+        <p class="hint">轰炸机要你指定目标：选中后右键点敌兵或敌塔，炸完自动返航挂弹再去。战斗机自动来回投弹，不用管。</p>`
+      : '';
+    return `
+      <h2>${drill ? '演习中' : '交战中'} <span class="time" data-v="time"></span></h2>
       <table class="stats">
         <tr><th></th><th>部队</th><th>塔与工事</th></tr>
-        <tr><td class="me">我方</td><td data-v="p-units"></td><td>—</td></tr>
-        <tr><td class="foe">敌方</td><td data-v="e-units"></td><td data-v="e-towers"></td></tr>
+        <tr><td class="me">${drill ? '守军（我方）' : '我方'}</td><td data-v="p-units"></td><td data-v="p-towers"></td></tr>
+        <tr><td class="foe">${drill ? '进攻方' : '敌方'}</td><td data-v="e-units"></td><td data-v="e-towers"></td></tr>
       </table>
-      <p>敌方指挥部：<b data-v="e-hq"></b></p>
+      <p>${drill ? '我方市政厅' : '敌方指挥部'}：<b data-v="hq"></b></p>
       <h3>部队指挥　<span class="sel">已选 <b data-v="sel"></b> 支</span></h3>
       <div class="row">
         ${btn('selectAll', '', '全选')}
         ${btn('clearSel', '', '取消选择', { disabled: !s.selected.size })}
       </div>
+      ${planeBtns}
       <div class="row" style="margin-top:6px">
         ${btn('all', 'assault', s.selected.size ? '选中的出击' : '全军出击')}
         ${btn('all', 'hold', s.selected.size ? '选中的驻守' : '全军驻守')}
@@ -132,12 +164,13 @@ export class Hud {
         ${btn('pause', '', s.paused ? '继续' : '暂停')}
         ${btn('speed', '', `速度 ${s.speed}x`)}
       </div>
-      ${btn('retreat', '', '撤退（拿不到掠夺）', { danger: true })}
+      ${drill ? btn('retreat', '', '结束演习', { danger: true }) : btn('retreat', '', '撤退（拿不到掠夺）', { danger: true })}
       ${this.helpHtml()}`;
   }
 
   private resultHtml(): string {
     const s = this.scene, b = s.battle;
+    if (s.mode === 'drill') return this.drillResultHtml();
     const outcome = b.outcome ?? 'retreat';
     const alive: Partial<Record<DefId, number>> = {};
     for (const e of b.living('player')) alive[e.defId] = (alive[e.defId] ?? 0) + 1;
@@ -156,6 +189,39 @@ export class Hud {
       ${this.sortieHtml()}
       ${s.mode === 'prototype' ? btn('again', '', '再来一局（新地图）', { primary: true }) : ''}
       ${btn('home', '', '← 返回基地', { primary: s.mode === 'sortie' })}`;
+  }
+
+  // 演习结果：进攻方损失、我方被毁的塔和建筑
+  private drillResultHtml(): string {
+    const s = this.scene, b = s.battle;
+    const outcome = b.outcome ?? 'retreat';
+    const alive = countBy(b.living('enemy').map(e => e.defId));
+    const rows = (Object.entries(s.deployedCounts) as [DefId, number][]).map(([id, n]) =>
+      `<tr><td>${DEFS[id].name}</td><td>${n}</td><td>${n - (alive[id] ?? 0)}</td></tr>`).join('');
+    const mine = b.entities.filter(e => e.side === 'player');
+    const lost = (pred: (k: string) => boolean) => {
+      const all = mine.filter(e => pred(e.def.kind));
+      return `${all.filter(e => !e.alive).length} / ${all.length}`;
+    };
+    const note = outcome === 'victory'
+      ? (b.time >= b.timeLimit ? '进攻方超时没能攻下基地。' : '进攻方被全部消灭。')
+      : outcome === 'defeat' ? '进攻方攻下了你的基地，布防还需要加强。' : '你提前结束了演习。';
+    return `
+      <h2 class="outcome ${outcome}">${DRILL_OUTCOME_TEXT[outcome]}</h2>
+      <p>用时 ${formatTime(b.time)}。${note}</p>
+      <table class="stats">
+        <tr><th>进攻方</th><th>投入</th><th>被消灭</th></tr>
+        ${rows}
+      </table>
+      <table class="stats">
+        <tr><th>我方被毁</th><th>数量</th></tr>
+        <tr><td>塔与工事</td><td>${lost(k => k === 'tower' || k === 'fort')}</td></tr>
+        <tr><td>其他建筑</td><td>${lost(k => k === 'civil' || k === 'hq')}</td></tr>
+        <tr><td>部队</td><td>${lost(k => k === 'infantry' || k === 'tank')}</td></tr>
+      </table>
+      <p class="hint">演习不造成任何实际损失，基地和部队都是原样。</p>
+      ${btn('again', '', '再演一次', { primary: true })}
+      ${btn('home', '', '← 返回基地')}`;
   }
 
   // 出击结算：伤员、掠夺所得、吞并
@@ -201,4 +267,10 @@ function unitTip(def: UnitDef): string {
 function formatTime(t: number): string {
   const s = Math.floor(t);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function countBy(ids: DefId[]): Partial<Record<DefId, number>> {
+  const out: Partial<Record<DefId, number>> = {};
+  for (const id of ids) out[id] = (out[id] ?? 0) + 1;
+  return out;
 }

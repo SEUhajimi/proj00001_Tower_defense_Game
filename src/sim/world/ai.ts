@@ -31,7 +31,7 @@ export interface LayoutBuilding {
 export interface AiLayout {
   size: number; // 边长（格）
   buildings: LayoutBuilding[];
-  units: { defId: DefId; x: number; y: number }[]; // 驻军（格子中心坐标）
+  units: { defId: DefId; x: number; y: number }[]; // 驻军和飞机（格子中心坐标）
 }
 
 export function aiPlots(ai: AiBase): number {
@@ -141,6 +141,14 @@ export function generateAiLayout(ai: AiBase): AiLayout {
     if (occ[y * size + x]) continue;
     occ[y * size + x] = 1;
     units.push({ defId: def.unitTypes[rng.int(0, def.unitTypes.length - 1)], x: x + 0.5, y: y + 0.5 });
+    k++;
+  }
+  // 驻场飞机停在空地上，开战后起飞
+  for (let k = 0, attempt = 0; k < def.planes.length && attempt < 2000; attempt++) {
+    const x = rng.int(1, size - 2), y = rng.int(1, size - 2);
+    if (occ[y * size + x]) continue;
+    occ[y * size + x] = 1;
+    units.push({ defId: def.planes[k], x: x + 0.5, y: y + 0.5 });
     k++;
   }
   return { size, buildings, units };

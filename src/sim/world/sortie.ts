@@ -31,7 +31,7 @@ export function createAiBattle(ai: AiBase, roster: Roster, seed: number): AiBatt
     for (const u of b.garrison) battle.garrison(battle.spawn(u, 'enemy', e.x, e.y, 'hold'), e);
   }
   for (const u of layout.units) battle.spawn(u.defId, 'enemy', u.x + o, u.y + o, 'hold');
-  const deployment = new Deployment(battle, { roster: { ...roster } }, { x: o, y: o, size: layout.size });
+  const deployment = new Deployment(battle, { roster: { ...roster } }, { x: o, y: o, w: layout.size, h: layout.size });
   return { battle, deployment, hqCenter, mapSize };
 }
 

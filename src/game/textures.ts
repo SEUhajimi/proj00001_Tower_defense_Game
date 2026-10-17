@@ -28,6 +28,38 @@ const INFANTRY_MARK: Partial<Record<DefId, number>> = {
   sapper: 0xff4d4d,
 };
 
+// 飞机离地的高度（像素），画面上飞机画在影子上方
+export const PLANE_ALT = 34;
+
+function poly(g: Phaser.GameObjects.Graphics, pts: number[]): void {
+  const v: Phaser.Math.Vector2[] = [];
+  for (let i = 0; i < pts.length; i += 2) v.push(new Phaser.Math.Vector2(pts[i], pts[i + 1]));
+  g.fillPoints(v, true);
+}
+
+// 俯视的飞机，机头朝右；战斗机后掠翼，轰炸机大展弦比
+function drawPlane(g: Phaser.GameObjects.Graphics, bomber: boolean, color: number): [number, number] {
+  const body = shade(color, 1.1), wing = shade(color, 0.8);
+  if (bomber) {
+    g.fillStyle(wing);
+    poly(g, [26, 20, 19, 1, 15, 1, 17, 20, 15, 39, 19, 39]);
+    poly(g, [8, 20, 3, 11, 1, 11, 3, 20, 1, 29, 3, 29]);
+    g.fillStyle(body);
+    g.fillRoundedRect(2, 17, 38, 6, 3);
+    g.fillStyle(0x1a1d22);
+    g.fillRect(34, 18, 3, 4);
+    return [42, 40];
+  }
+  g.fillStyle(wing);
+  poly(g, [17, 11, 10, 1, 7, 1, 11, 11, 7, 21, 10, 21]);
+  poly(g, [5, 11, 1, 5, 0, 5, 2, 11, 0, 17, 1, 17]);
+  g.fillStyle(body);
+  poly(g, [1, 9, 22, 9, 28, 11, 22, 13, 1, 13]);
+  g.fillStyle(0x1a1d22);
+  g.fillRect(17, 10, 3, 2);
+  return [28, 22];
+}
+
 // 建筑立方体高度（像素）
 export const CUBE_HEIGHT: Partial<Record<DefId, number>> = {
   mgTower: 26, cannonTower: 22, atTower: 24, aaTower: 26, pillbox: 14, bunker: 16, hq: 52,
@@ -93,6 +125,9 @@ export function makeTextures(scene: Phaser.Scene): void {
           g.fillTriangle(w / 2, w / 4 - 26, w / 2 + 16, w / 4 - 21, w / 2, w / 4 - 16);
         }
         g.generateTexture(key, w, w / 2 + h);
+      } else if (def.kind === 'fighter' || def.kind === 'bomber') {
+        const [w, h] = drawPlane(g, def.kind === 'bomber', color);
+        g.generateTexture(key, w, h);
       } else if (def.kind === 'tank') {
         const big = id === 'tank3' || id === 'tank4';
         const w = big ? 40 : 34, h = 9;

@@ -1,5 +1,5 @@
 import { DAMAGE_MULT, HQ_DOWN_DAMAGE_MULT, type DamageType } from '../data/combat';
-import { DEFS, type DefId, type UnitDef, type Weapon } from '../data/units';
+import { DEFS, isAirDef, type DefId, type UnitDef, type Weapon } from '../data/units';
 import type { Grid, Point } from './grid';
 import type { Rng } from './rng';
 
@@ -37,6 +37,8 @@ export interface Entity {
   inside: number | null; // 步兵：驻防在哪座工事里
   garrison: number[]; // 工事：里面驻防的步兵
   order: Order | null;
+  strikeId: number | null; // 战斗机：这一趟要轰炸的目标
+  pass: Point | null; // 战斗机：投弹后飞过头的位置，到了再掉头
 }
 
 export type BattleEvent =
@@ -47,8 +49,11 @@ export type BattleEvent =
 const ALERT_MARGIN = 3; // 驻守单位的警戒半径 = 最大射程 + 该值
 const SEPARATION = 0.35;
 const REPATH_SECONDS = 1;
+const FLY_PAST = 3; // 战斗机投弹后再往前飞几格才掉头
+const STEALTH_AA_MULT = 0.5;
 
 export const isMobile = (e: Entity) => e.def.speed > 0;
+export const isAir = (e: Entity) => isAirDef(e.def);
 
 // 驻防在工事里的步兵不能被选为目标，也不受溅射
 const targetable = (o: Entity) => o.alive && o.hp > 0 && o.inside === null;
@@ -68,6 +73,8 @@ export class Battle {
 
   time = 0;
   started = false;
+  attacker: Side = 'player'; // 进攻方；演习时玩家是防守方
+  timeLimit = Infinity; // 超时算防守方赢（演习用）
   outcome: Outcome | null = null;
   readonly entities: Entity[] = [];
   readonly hqDown: Record<Side, boolean> = { player: false, enemy: false };
@@ -93,7 +100,7 @@ export class Battle {
       path: [], pathTargetKey: '', repathIn: 0,
       tileX: Math.floor(x), tileY: Math.floor(y),
       alive: true,
-      skin, inside: null, garrison: [], order: null,
+      skin, inside: null, garrison: [], order: null, strikeId: null, pass: null,
     };
     if (building) this.grid.setOccupant(e.tileX, e.tileY, def.size, e.id);
     this.entities.push(e);
@@ -143,7 +150,7 @@ export class Battle {
   setStance(side: Side, stance: Stance, ids?: number[]): void {
     const only = ids ? new Set(ids) : null;
     for (const e of this.entities) {
-      if (e.alive && e.side === side && isMobile(e) && e.inside === null && (!only || only.has(e.id))) {
+      if (e.alive && e.side === side && isMobile(e) && !isAir(e) && e.inside === null && (!only || only.has(e.id))) {
         e.stance = stance;
         e.order = null;
         // 改为驻守时，就地设为新驻地
@@ -152,9 +159,9 @@ export class Battle {
     }
   }
 
-  // 移动命令：多支部队在目的地附近排开，到达后就地驻守
+  // 移动命令：多支部队在目的地附近排开，到达后就地驻守。飞机不接受移动命令
   orderMove(ids: number[], x: number, y: number): void {
-    const units = ids.map(id => this.byId.get(id)).filter((u): u is Entity => !!u && this.commandable(u));
+    const units = ids.map(id => this.byId.get(id)).filter((u): u is Entity => !!u && this.commandable(u) && !isAir(u));
     const spots = formation(units.length);
     units.forEach((u, k) => {
       const tx = x + spots[k].x, ty = y + spots[k].y;
@@ -164,13 +171,14 @@ export class Battle {
     });
   }
 
-  // 集火命令：所有能伤到目标的武器优先打它
+  // 集火命令：所有能伤到目标的武器优先打它；轰炸机飞去轰炸它，战斗机自己找目标、不听指挥
   orderAttack(ids: number[], targetId: number): void {
     const target = this.byId.get(targetId);
     if (!target || !targetable(target)) return;
     for (const id of ids) {
       const u = this.byId.get(id);
-      if (!u || !this.commandable(u) || u.side === target.side || this.bestMult(u, target) <= 0) continue;
+      if (!u || !this.commandable(u) || u.def.kind === 'fighter') continue;
+      if (u.side === target.side || this.bestMult(u, target) <= 0) continue;
       u.order = { kind: 'attack', targetId };
       u.repathIn = 0;
     }
@@ -194,8 +202,12 @@ export class Battle {
     if (!this.started || this.outcome) return;
     this.time += Battle.DT;
     for (const e of this.entities) { e.px = e.x; e.py = e.y; }
-    for (const e of this.entities) if (e.alive) this.updateCombat(e);
-    for (const e of this.entities) if (e.alive && isMobile(e) && e.inside === null) this.updateMovement(e);
+    for (const e of this.entities) {
+      if (!e.alive) continue;
+      if (isAir(e)) this.updatePlane(e);
+      else this.updateCombat(e);
+    }
+    for (const e of this.entities) if (e.alive && isMobile(e) && !isAir(e) && e.inside === null) this.updateMovement(e);
     this.separate();
     this.processDeaths();
     this.checkOutcome();
@@ -250,19 +262,113 @@ export class Battle {
   }
 
   private fire(e: Entity, w: Weapon, target: Entity): void {
-    const factor = this.damageFactor(e.side);
     e.facing = Math.atan2(target.y - e.y, target.x - e.x);
     if (w.splash) {
-      for (const o of this.entities) {
-        if (o.side === e.side || !targetable(o)) continue;
-        if (distToEntity(target.x, target.y, o) > w.splash) continue;
-        o.hp -= w.dmg * DAMAGE_MULT[w.type][o.def.armor] * factor;
-      }
-      this.events.push({ type: 'boom', x: target.x, y: target.y, r: w.splash });
+      this.blast(e, w, target.x, target.y);
     } else {
-      target.hp -= w.dmg * DAMAGE_MULT[w.type][target.def.armor] * factor;
+      this.hurt(target, w, this.damageFactor(e.side));
     }
     this.events.push({ type: 'shot', from: e.id, to: target.id, dmgType: w.type });
+  }
+
+  private hurt(o: Entity, w: Weapon, factor: number): void {
+    const stealth = o.def.stealth && w.type === 'aa' ? STEALTH_AA_MULT : 1;
+    o.hp -= w.dmg * DAMAGE_MULT[w.type][o.def.armor] * factor * stealth;
+  }
+
+  // 溅射：以 (x, y) 为中心，范围内的敌方都受伤
+  private blast(e: Entity, w: Weapon, x: number, y: number): void {
+    const factor = this.damageFactor(e.side);
+    for (const o of this.entities) {
+      if (o.side === e.side || !targetable(o)) continue;
+      if (distToEntity(x, y, o) > (w.splash ?? 0)) continue;
+      this.hurt(o, w, factor);
+    }
+    this.events.push({ type: 'boom', x, y, r: w.splash ?? 0 });
+  }
+
+  // ---------- 飞机 ----------
+
+  private updatePlane(e: Entity): void {
+    e.cooldowns[0] = Math.max(0, e.cooldowns[0] - Battle.DT);
+    if (e.def.kind === 'fighter') this.updateFighter(e);
+    else this.updateBomber(e);
+  }
+
+  // 战斗机：自己挑一个地面目标俯冲过去，弹药好了就投弹，飞过头几格再掉头找下一个，来回穿梭
+  private updateFighter(e: Entity): void {
+    if (e.pass) {
+      if (this.flyTo(e, e.pass.x, e.pass.y)) e.pass = null;
+      return;
+    }
+    let t = e.strikeId === null ? undefined : this.byId.get(e.strikeId);
+    if (!t || !targetable(t)) {
+      t = this.pickStrike(e);
+      e.strikeId = t?.id ?? null;
+    }
+    if (!t) { this.flyTo(e, e.postX, e.postY); return; }
+    if (!this.flyTo(e, t.x, t.y)) return;
+    if (e.cooldowns[0] <= 0) {
+      const w = e.def.weapons[0];
+      this.blast(e, w, t.x, t.y);
+      e.cooldowns[0] = w.interval;
+    }
+    e.strikeId = null;
+    const g = this.grid;
+    e.pass = {
+      x: Math.min(g.w - 0.5, Math.max(0.5, e.x + Math.cos(e.facing) * FLY_PAST)),
+      y: Math.min(g.h - 0.5, Math.max(0.5, e.y + Math.sin(e.facing) * FLY_PAST)),
+    };
+  }
+
+  // 离得最近的几个地面目标里随机挑一个，免得所有战斗机扎堆
+  private pickStrike(e: Entity): Entity | undefined {
+    const near = this.entities
+      .filter(o => o.side !== e.side && targetable(o) && !isAir(o))
+      .map(o => ({ o, d: Math.hypot(o.x - e.x, o.y - e.y) }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 4);
+    return near.length ? near[Math.floor(this.rng.next() * near.length)].o : undefined;
+  }
+
+  // 轰炸机：飞到目标上空投弹，然后返航（回到起飞点）重新挂弹，挂好了再去。
+  // 玩家的轰炸机只听命令；电脑一方的轰炸机自己挑塔和工事炸
+  private updateBomber(e: Entity): void {
+    let t = this.orderTarget(e);
+    if (!t && e.side !== 'player') t = this.autoBomberTarget(e);
+    if (t && e.cooldowns[0] <= 0) {
+      if (this.flyTo(e, t.x, t.y)) {
+        const w = e.def.weapons[0];
+        this.blast(e, w, t.x, t.y);
+        e.cooldowns[0] = w.interval;
+      }
+      return;
+    }
+    this.flyTo(e, e.postX, e.postY);
+  }
+
+  private autoBomberTarget(e: Entity): Entity | null {
+    let best: Entity | null = null, bestScore = Infinity;
+    for (const o of this.entities) {
+      if (o.side === e.side || !targetable(o) || isAir(o)) continue;
+      const kind = o.def.kind;
+      const tier = kind === 'tower' || kind === 'fort' ? 0 : kind === 'hq' ? 1 : 2;
+      const score = tier * 1000 + Math.hypot(o.x - e.x, o.y - e.y);
+      if (score < bestScore) { bestScore = score; best = o; }
+    }
+    if (best) e.order = { kind: 'attack', targetId: best.id };
+    return best;
+  }
+
+  // 直线飞向 (x, y)，不受地形阻挡；到达返回 true
+  private flyTo(e: Entity, x: number, y: number): boolean {
+    const dx = x - e.x, dy = y - e.y, d = Math.hypot(dx, dy);
+    const step = e.def.speed * Battle.DT;
+    if (d > 1e-6) e.facing = Math.atan2(dy, dx);
+    if (d <= step) { e.x = x; e.y = y; return true; }
+    e.x += (dx / d) * step;
+    e.y += (dy / d) * step;
+    return false;
   }
 
   // e 对 o 能造成伤害的最远射程；打不动返回 -1
@@ -283,11 +389,12 @@ export class Battle {
   // ---------- 移动 ----------
 
   // 选择要接近的敌人：驻守单位只管警戒圈内的，出击单位不限距离
+  // 飞机太快，地面部队不追，只在射程内开火
   private engageTarget(e: Entity): Entity | null {
     const maxRange = Math.max(...e.def.weapons.map(w => w.range));
     let best: Entity | null = null, bestScore = Infinity;
     for (const o of this.entities) {
-      if (o.side === e.side || !targetable(o)) continue;
+      if (o.side === e.side || !targetable(o) || isAir(o)) continue;
       const mult = this.bestMult(e, o);
       if (mult <= 0) continue;
       if (e.stance === 'hold' && distToEntity(e.postX, e.postY, o) > maxRange + ALERT_MARGIN) continue;
@@ -303,7 +410,7 @@ export class Battle {
     const t = this.byId.get(e.order.targetId);
     if (t && targetable(t)) return t;
     e.order = null;
-    if (e.stance === 'hold') { e.postX = e.x; e.postY = e.y; }
+    if (e.stance === 'hold' && !isAir(e)) { e.postX = e.x; e.postY = e.y; }
     return null;
   }
 
@@ -369,7 +476,7 @@ export class Battle {
 
   // 防止同一格里的单位完全叠在一起
   private separate(): void {
-    const mobile = this.entities.filter(e => e.alive && isMobile(e) && e.inside === null);
+    const mobile = this.entities.filter(e => e.alive && isMobile(e) && !isAir(e) && e.inside === null);
     for (let i = 0; i < mobile.length; i++) {
       for (let j = i + 1; j < mobile.length; j++) {
         const a = mobile[i], b = mobile[j];
@@ -418,15 +525,17 @@ export class Battle {
     fort.garrison = [];
   }
 
-  // 胜利：敌方所有目标被消灭，或敌方指挥部被毁且部队打光（残余塔视为敌方撤退）。
-  // 失败：我方部队全灭——营地的塔不能移动，单靠塔攻不下基地。
+  // 进攻方赢：防守方所有地面目标被消灭，或指挥部被毁且地面部队打光（残余塔视为撤退）。
+  // 防守方的飞机不算，地面打光后自行撤离。
+  // 防守方赢：进攻方能移动的部队全灭（塔不能移动，单靠塔攻不下基地），或超时。
+  // outcome 按玩家的角度记：玩家一方赢了就是 victory。
   private checkOutcome(): void {
-    const enemy = this.living('enemy');
-    if (enemy.length === 0 || (this.hqDown.enemy && !enemy.some(isMobile))) {
-      this.outcome = 'victory';
-    } else if (!this.living('player').some(isMobile)) {
-      this.outcome = 'defeat';
-    }
+    const att = this.attacker, def: Side = att === 'player' ? 'enemy' : 'player';
+    const defenders = this.living(def).filter(e => !isAir(e));
+    let winner: Side | null = null;
+    if (defenders.length === 0 || (this.hqDown[def] && !defenders.some(isMobile))) winner = att;
+    else if (!this.living(att).some(isMobile) || this.time >= this.timeLimit) winner = def;
+    if (winner) this.outcome = winner === 'player' ? 'victory' : 'defeat';
   }
 }
 

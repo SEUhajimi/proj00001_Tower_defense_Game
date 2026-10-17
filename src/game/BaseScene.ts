@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { baseDef, type BaseBuildingId, type Terrain } from '../data/economy';
-import type { DefId } from '../data/units';
+import { DEFS, type DefId } from '../data/units';
 import { Base, type PlacedBuilding } from '../sim/base/base';
 import { advanceTo } from '../sim/base/economy';
 import { PLOT_SIZE, REGION_PLOTS, REGION_TILES } from '../sim/base/terrain';
@@ -133,6 +133,18 @@ export class BaseScene extends Phaser.Scene {
     const r = this.base.repairAll();
     this.message = r === true ? '' : r;
     this.hud.render();
+  }
+
+  research(defId: DefId): void {
+    const r = this.base.research(defId);
+    this.message = r === true ? `${DEFS[defId].name}研发完成` : r;
+    this.hud.render();
+  }
+
+  // 演习：电脑带着这支军队进攻自己的基地，打完一切照旧
+  startDrill(attackers: Roster): void {
+    if (!Object.values(attackers).some(n => (n ?? 0) > 0)) { this.message = '进攻方没有部队'; this.hud.render(); return; }
+    this.scene.start('battle', { mode: 'drill', roster: attackers });
   }
 
   fastForward(hours: number): void {

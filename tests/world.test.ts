@@ -71,7 +71,7 @@ describe('AI 基地布局', () => {
           occ.add(`${x},${y}`);
         }
       }
-      expect(a.units.length).toBe(lv.garrison);
+      expect(a.units.length).toBe(lv.garrison + lv.planes.length);
     }
   });
 });

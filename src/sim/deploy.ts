@@ -1,37 +1,38 @@
 import { DEFS, type DefId, type UnitDef } from '../data/units';
-import { distToEntity, type Battle, type Entity, type Stance } from './battle';
+import { distToEntity, type Battle, type Entity, type Side, type Stance } from './battle';
 import type { Point } from './grid';
 
 export interface Loadout {
-  roster: Partial<Record<DefId, number>>; // 带来的部队：出击只能派步兵、坦克（和阶段 4 的飞机）
+  roster: Partial<Record<DefId, number>>; // 带来的部队：出击只能派步兵、坦克和飞机
 }
 
 export interface Rect {
   x: number;
   y: number;
-  size: number;
+  w: number;
+  h: number;
 }
 
-// 出击前的部署：敌方基地四周有一圈空地作为投送区，部队只能摆在这圈里。
-// 出击不能修建防御塔或工事。
+// 进攻前的部署：被攻击的基地四周有一圈空地作为投送区，部队只能摆在这圈里。
+// 进攻不能修建防御塔或工事。side 是进攻方（演习时电脑扮演进攻方，是 enemy）。
 export class Deployment {
   readonly roster: Partial<Record<DefId, number>>;
 
-  constructor(readonly battle: Battle, loadout: Loadout, readonly enemyBase: Rect) {
+  constructor(readonly battle: Battle, loadout: Loadout, readonly enemyBase: Rect, readonly side: Side = 'player') {
     this.roster = { ...loadout.roster };
   }
 
   inDropZone(tx: number, ty: number): boolean {
-    const { x, y, size } = this.enemyBase;
+    const { x, y, w, h } = this.enemyBase;
     if (!this.battle.grid.inBounds(tx, ty)) return false;
-    return tx < x || ty < y || tx >= x + size || ty >= y + size;
+    return tx < x || ty < y || tx >= x + w || ty >= y + h;
   }
 
-  // 有几座敌方塔或有驻军的工事能打到这一格（部署时参考）
+  // 有几座防守方的塔或有驻军的工事能打到这一格（部署时参考）
   threatAt(tx: number, ty: number): number {
     let n = 0;
     for (const e of this.battle.entities) {
-      if (!e.alive || e.side !== 'enemy') continue;
+      if (!e.alive || e.side === this.side) continue;
       let range = -1;
       if (e.def.kind === 'tower') {
         range = Math.max(...e.def.weapons.map(w => w.range));
@@ -47,7 +48,7 @@ export class Deployment {
   }
 
   placed(): Entity[] {
-    return this.battle.entities.filter(e => e.side === 'player');
+    return this.battle.entities.filter(e => e.side === this.side);
   }
 
   entityAt(tx: number, ty: number): Entity | undefined {
@@ -66,7 +67,7 @@ export class Deployment {
   place(defId: DefId, tx: number, ty: number, stance: Stance): Entity | null {
     if (this.canPlace(defId, tx, ty) !== true) return null;
     this.roster[defId] = (this.roster[defId] ?? 0) - 1;
-    return this.battle.spawn(defId, 'player', tx + 0.5, ty + 0.5, stance);
+    return this.battle.spawn(defId, this.side, tx + 0.5, ty + 0.5, stance);
   }
 
   removeAt(tx: number, ty: number): boolean {

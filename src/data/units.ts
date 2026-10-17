@@ -12,7 +12,8 @@ export interface Weapon {
 }
 
 // fort = 可驻防的工事；civil = 民用建筑（不开火，只是可以被摧毁的目标）
-export type UnitKind = 'infantry' | 'tank' | 'tower' | 'fort' | 'civil' | 'hq';
+// fighter / bomber = 飞机：不受地形阻挡，只有防空和重机枪打得到
+export type UnitKind = 'infantry' | 'tank' | 'fighter' | 'bomber' | 'tower' | 'fort' | 'civil' | 'hq';
 
 export interface Cost {
   steel?: number;
@@ -32,9 +33,13 @@ export interface UnitDef {
   cost?: Cost;
   capacity?: number; // 工事可驻防的步兵数
   rangeBonus?: number; // 驻防步兵的射程加成
+  stealth?: boolean; // 隐身：受防空伤害减半
 }
 
 const coaxMg: Weapon = { dmg: 6, interval: 0.3, range: 4, type: 'bullet' };
+
+// 飞机的武器是航弹：飞到目标正上方才投，interval 就是出击间隔
+const bomb = (dmg: number, interval: number, splash: number): Weapon => ({ dmg, interval, range: 0, type: 'bomb', splash });
 
 export const DEFS = {
   rifle: {
@@ -73,6 +78,42 @@ export const DEFS = {
   tank4: {
     name: '四代坦克', kind: 'tank', armor: 'armor', hp: 4000, speed: 1.1, radius: 0.45, size: 0,
     weapons: [{ dmg: 260, interval: 2.2, range: 6.5, type: 'ap' }, coaxMg],
+  },
+  fighter1: {
+    name: '一代战斗机', kind: 'fighter', armor: 'air', hp: 300, speed: 5, radius: 0.4, size: 0,
+    weapons: [bomb(60, 6, 1)],
+  },
+  fighter2: {
+    name: '二代战斗机', kind: 'fighter', armor: 'air', hp: 400, speed: 5.5, radius: 0.4, size: 0,
+    weapons: [bomb(90, 6, 1)],
+  },
+  fighter3: {
+    name: '三代战斗机', kind: 'fighter', armor: 'air', hp: 550, speed: 6, radius: 0.4, size: 0,
+    weapons: [bomb(130, 5, 1.5)],
+  },
+  fighter4: {
+    name: '四代战斗机', kind: 'fighter', armor: 'air', hp: 750, speed: 6.5, radius: 0.4, size: 0,
+    weapons: [bomb(180, 5, 1.5)],
+  },
+  fighter5: {
+    name: '五代战斗机', kind: 'fighter', armor: 'air', hp: 900, speed: 7, radius: 0.4, size: 0,
+    weapons: [bomb(240, 4, 1.5)], stealth: true,
+  },
+  bomber1: {
+    name: '一级轰炸机', kind: 'bomber', armor: 'air', hp: 1500, speed: 2.5, radius: 0.6, size: 0,
+    weapons: [bomb(800, 30, 2.5)],
+  },
+  bomber2: {
+    name: '二级轰炸机', kind: 'bomber', armor: 'air', hp: 2200, speed: 2.5, radius: 0.6, size: 0,
+    weapons: [bomb(1100, 30, 2.5)],
+  },
+  bomber3: {
+    name: '三级轰炸机', kind: 'bomber', armor: 'air', hp: 2600, speed: 2.8, radius: 0.6, size: 0,
+    weapons: [bomb(1500, 25, 3)],
+  },
+  bomber4: {
+    name: '四级轰炸机', kind: 'bomber', armor: 'air', hp: 3000, speed: 2.8, radius: 0.6, size: 0,
+    weapons: [bomb(2000, 25, 3)], stealth: true,
   },
   mgTower: {
     name: '机枪塔', kind: 'tower', armor: 'building', hp: 1200, speed: 0, radius: 0.5, size: 1,
@@ -125,3 +166,8 @@ export type DefId = keyof typeof DEFS;
 export function getDef(id: DefId): UnitDef {
   return DEFS[id];
 }
+
+export const isAirDef = (d: UnitDef) => d.kind === 'fighter' || d.kind === 'bomber';
+
+// 能出击的兵种（步兵、坦克、飞机），按 DEFS 顺序
+export const MOBILE_UNITS = (Object.keys(DEFS) as DefId[]).filter(id => DEFS[id].speed > 0);

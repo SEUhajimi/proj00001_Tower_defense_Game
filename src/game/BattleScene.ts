@@ -1,24 +1,26 @@
 import Phaser from 'phaser';
 import type { DamageType } from '../data/combat';
 import { DEFS, type DefId } from '../data/units';
-import { Battle, isMobile, type Entity, type Stance } from '../sim/battle';
+import { Battle, isAir, isMobile, type Entity, type Stance } from '../sim/battle';
 import { autoDeploy, type Deployment } from '../sim/deploy';
 import type { Point } from '../sim/grid';
 import { createPrototypeBattle, ENEMY_HQ_CENTER, MAP_W as PROTO_MAP } from '../sim/scenario';
 import { createAiBattle, settleSortie, type AiBattle, type Roster, type SortieReport } from '../sim/world/sortie';
 import type { AiBase } from '../sim/world/ai';
+import { createDrill } from '../sim/world/drill';
 import { save, session } from './session';
 import { Hud } from '../ui/hud';
 import { footprintDiamond, pointsOf, TILE_H, tileDiamond, toScreen, toWorld } from './iso';
-import { BASE_INSET, CUBE_HEIGHT, makeBaseTextures, makeTextures, textureKey } from './textures';
+import { BASE_INSET, CUBE_HEIGHT, makeBaseTextures, makeTextures, PLANE_ALT, textureKey } from './textures';
 
 export type Phase = 'deploy' | 'battle' | 'result';
 
-// 出击（打 AI 基地，结果写回存档）或战斗原型（开发调试用的固定战场）
+// 出击（打 AI 基地，结果写回存档）、演习（电脑进攻自己的基地，什么都不改变）
+// 或战斗原型（开发调试用的固定战场）
 export interface BattleInit {
-  mode: 'sortie' | 'prototype';
+  mode: 'sortie' | 'drill' | 'prototype';
   aiId?: number;
-  roster?: Roster;
+  roster?: Roster; // 出击带的部队；演习时是进攻方的部队
 }
 
 const AI_TINT = 0xff9a9a;
@@ -125,6 +127,13 @@ export class BattleScene extends Phaser.Scene {
       this.deployment = this.fight.deployment;
       this.mapW = this.mapH = this.fight.mapSize;
       this.hqCenter = this.fight.hqCenter;
+    } else if (this.mode === 'drill') {
+      const drill = createDrill(session().base, this.roster, Date.now() % 1e9);
+      this.battle = drill.battle;
+      this.deployment = drill.deployment;
+      this.mapW = drill.mapW;
+      this.mapH = drill.mapH;
+      this.hqCenter = drill.hqCenter;
     } else {
       const { battle, deployment } = createPrototypeBattle(this.seed++);
       this.battle = battle;
@@ -175,6 +184,12 @@ export class BattleScene extends Phaser.Scene {
 
   selectAll(): void {
     this.selected = new Set(this.commandable().map(e => e.id));
+    this.hud.render();
+  }
+
+  // 一键选中同型号的全部飞机（轰炸机靠这个指定目标）
+  selectType(defId: DefId): void {
+    this.selected = new Set(this.commandable().filter(e => e.defId === defId).map(e => e.id));
     this.hud.render();
   }
 
@@ -247,7 +262,8 @@ export class BattleScene extends Phaser.Scene {
         const a = byId(ev.from), b = byId(ev.to);
         if (!a || !b) continue;
         const p = this.muzzle(a), q = this.screenPos(b.x, b.y);
-        this.effects.push({ kind: 'line', x1: p.x, y1: p.y, x2: q.x, y2: q.y - 6, r: 0, color: SHOT_COLOR[ev.dmgType], t: 0.08, max: 0.08 });
+        const lift = isAir(b) ? PLANE_ALT : 6;
+        this.effects.push({ kind: 'line', x1: p.x, y1: p.y, x2: q.x, y2: q.y - lift, r: 0, color: SHOT_COLOR[ev.dmgType], t: 0.08, max: 0.08 });
       } else if (ev.type === 'boom') {
         const p = this.screenPos(ev.x, ev.y);
         this.effects.push({ kind: 'ring', x1: p.x, y1: p.y, x2: 0, y2: 0, r: ev.r * TILE_H, color: 0xffa040, t: 0.35, max: 0.35 });
@@ -355,6 +371,7 @@ export class BattleScene extends Phaser.Scene {
         s = this.add.image(0, 0, e.skin ? `bb-${e.skin}` : textureKey(e.defId, e.side));
         if (e.skin && e.side === 'enemy') s.setTint(AI_TINT);
         if (e.def.size > 0) s.setOrigin(0.5, 1);
+        else if (isAir(e)) s.setOrigin(0.5, 0.5);
         else if (e.def.kind === 'tank') s.setOrigin(0.5, 1);
         else s.setOrigin(0.5, 21 / 24);
         this.sprites.set(e.id, s);
@@ -363,6 +380,13 @@ export class BattleScene extends Phaser.Scene {
       const p = toScreen(x, y);
       if (e.def.size > 0) {
         s.setPosition(p.sx, p.sy + (e.skin ? BASE_INSET : 0.8) * e.def.size * (TILE_H / 2));
+      } else if (isAir(e)) {
+        // 飞机在高处，朝向按屏幕上的方向旋转；画在所有地面物体之上
+        const d = toScreen(Math.cos(e.facing), Math.sin(e.facing));
+        s.setPosition(p.sx, p.sy - PLANE_ALT);
+        s.setRotation(Math.atan2(d.sy, d.sx));
+        s.setDepth(5000 + x + y);
+        continue;
       } else if (e.def.kind === 'tank') {
         s.setPosition(p.sx, p.sy + s.width / 4);
         // 只区分朝屏幕左还是右
@@ -400,6 +424,11 @@ export class BattleScene extends Phaser.Scene {
         g.lineBetween(p.sx, top, p.sx + (dir.sx / len) * 16, top + (dir.sy / len) * 16);
       }
       if (e.inside !== null) continue;
+      // 飞机的影子
+      if (isAir(e)) {
+        g.fillStyle(0x000000, 0.25);
+        g.fillEllipse(p.sx, p.sy, e.def.kind === 'bomber' ? 30 : 18, e.def.kind === 'bomber' ? 12 : 7);
+      }
       // 工事上方：驻防人数
       if (e.def.kind === 'fort') {
         const cap = e.def.capacity ?? 0, y0 = p.sy - (CUBE_HEIGHT[e.defId] ?? 16) - 10;
@@ -412,7 +441,7 @@ export class BattleScene extends Phaser.Scene {
       // 血条
       if (e.hp < e.def.hp) {
         const w = e.def.kind === 'hq' ? 80 : e.def.size > 0 || e.def.kind === 'tank' ? 34 : 18;
-        const lift = e.def.size > 0 ? (CUBE_HEIGHT[e.defId] ?? 24) + 18 : 26;
+        const lift = e.def.size > 0 ? (CUBE_HEIGHT[e.defId] ?? 24) + 18 : isAir(e) ? PLANE_ALT + 18 : 26;
         const bx = p.sx - w / 2, by = p.sy - lift;
         g.fillStyle(0x000000, 0.6);
         g.fillRect(bx - 1, by - 1, w + 2, 5);
@@ -440,7 +469,7 @@ export class BattleScene extends Phaser.Scene {
       const e = this.battle.get(id);
       if (!e || !e.alive) { this.selected.delete(id); continue; }
       const p = toScreen(e.px + (e.x - e.px) * alpha, e.py + (e.y - e.py) * alpha);
-      const r = e.def.kind === 'tank' ? 20 : 11;
+      const r = e.def.kind === 'tank' || e.def.kind === 'bomber' ? 20 : 11;
       g.lineStyle(2, 0x7dff8a, 0.95);
       g.strokeEllipse(p.sx, p.sy, r * 2, r);
       if (e.order?.kind === 'attack') targets.add(e.order.targetId);
@@ -479,8 +508,8 @@ export class BattleScene extends Phaser.Scene {
     if (isBox) {
       const lx = Math.min(x0, x1), hx = Math.max(x0, x1), ly = Math.min(y0, y1), hy = Math.max(y0, y1);
       for (const e of this.commandable()) {
-        const p = toScreen(e.x, e.y);
-        if (p.sx >= lx && p.sx <= hx && p.sy - 8 >= ly && p.sy - 8 <= hy) this.selected.add(e.id);
+        const p = toScreen(e.x, e.y), sy = p.sy - pickLift(e);
+        if (p.sx >= lx && p.sx <= hx && sy >= ly && sy <= hy) this.selected.add(e.id);
       }
     } else {
       const hit = this.pickUnit(this.commandable(), x1, y1);
@@ -496,7 +525,7 @@ export class BattleScene extends Phaser.Scene {
     let best: Entity | null = null, bestD = PICK_RADIUS;
     for (const e of units) {
       const p = toScreen(e.x, e.y);
-      const d = Math.hypot(p.sx - wx, p.sy - 8 - wy);
+      const d = Math.hypot(p.sx - wx, p.sy - pickLift(e) - wy);
       if (d < bestD) { bestD = d; best = e; }
     }
     return best;
@@ -594,6 +623,7 @@ export class BattleScene extends Phaser.Scene {
       if (moved >= DRAG_THRESHOLD) return; // 那是在拖动视角
       // 右键单击：部署时取消工具或撤回单位；交战时下命令
       if (this.phase === 'deploy' && this.hover) {
+        if (this.mode === 'drill') return; // 演习的进攻方由电脑布置
         if (this.tool) this.selectTool(null);
         else if (this.deployment.removeAt(this.hover.x, this.hover.y)) this.hud.render();
       } else if (this.phase === 'battle') {
@@ -614,4 +644,9 @@ export class BattleScene extends Phaser.Scene {
     if (k.W.isDown || k.UP.isDown) cam.scrollY -= v;
     if (k.S.isDown || k.DOWN.isDown) cam.scrollY += v;
   }
+}
+
+// 点选时以单位画面上的身体位置为准：飞机在高处
+function pickLift(e: Entity): number {
+  return isAir(e) ? PLANE_ALT : 8;
 }
