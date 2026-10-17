@@ -8,7 +8,7 @@ import { Hud } from '../ui/hud';
 import { pointsOf, TILE_H, tileDiamond, toScreen, toWorld } from './iso';
 import { CUBE_HEIGHT, makeTextures, textureKey } from './textures';
 
-export type Phase = 'landing' | 'deploy' | 'battle' | 'result';
+export type Phase = 'deploy' | 'battle' | 'result';
 
 interface Effect {
   kind: 'line' | 'ring';
@@ -28,7 +28,7 @@ const MAX_STEPS_PER_FRAME = 40;
 export class BattleScene extends Phaser.Scene {
   battle!: Battle;
   deployment!: Deployment;
-  phase: Phase = 'landing';
+  phase: Phase = 'deploy';
   tool: DefId | null = null;
   stance: Stance = 'assault';
   speed = 1;
@@ -89,7 +89,7 @@ export class BattleScene extends Phaser.Scene {
     this.paused = false;
     this.speed = 1;
     this.drawTerrain();
-    this.setPhase('landing');
+    this.setPhase('deploy');
   }
 
   setPhase(phase: Phase): void {
@@ -97,10 +97,6 @@ export class BattleScene extends Phaser.Scene {
     if (phase !== 'deploy') this.tool = null;
     this.drawZone();
     this.hud.render();
-  }
-
-  relaunch(): void {
-    this.setPhase('landing');
   }
 
   selectTool(defId: DefId | null): void {
@@ -225,22 +221,14 @@ export class BattleScene extends Phaser.Scene {
   private drawZone(): void {
     const g = this.zone;
     g.clear();
-    if (this.phase === 'landing') {
-      // 可投送的格子按被几座敌方塔覆盖着色：绿 0、黄 1、橙 2、红 3+
-      const colors = [0x7dff8a, 0xffe14a, 0xff9a3c, 0xff4d4d];
-      for (let ty = 0; ty < MAP_H; ty++) {
-        for (let tx = 0; tx < MAP_W; tx++) {
-          if (!this.deployment.canLand(tx, ty)) continue;
-          g.fillStyle(colors[Math.min(3, this.deployment.threatAt(tx, ty))], 0.55);
-          g.fillPoints(pointsOf(tileDiamond(tx, ty)), true);
-        }
-      }
-    } else if (this.phase === 'deploy') {
-      g.fillStyle(0x3d8bfd, 0.22);
-      for (let ty = 0; ty < MAP_H; ty++) {
-        for (let tx = 0; tx < MAP_W; tx++) {
-          if (this.deployment.inCamp(tx, ty)) g.fillPoints(pointsOf(tileDiamond(tx, ty)), true);
-        }
+    if (this.phase !== 'deploy') return;
+    // 投送区按被几座敌方塔覆盖着色：绿 0、黄 1、橙 2、红 3+
+    const colors = [0x7dff8a, 0xffe14a, 0xff9a3c, 0xff4d4d];
+    for (let ty = 0; ty < MAP_H; ty++) {
+      for (let tx = 0; tx < MAP_W; tx++) {
+        if (!this.deployment.inDropZone(tx, ty)) continue;
+        g.fillStyle(colors[Math.min(3, this.deployment.threatAt(tx, ty))], 0.4);
+        g.fillPoints(pointsOf(tileDiamond(tx, ty)), true);
       }
     }
   }
@@ -251,8 +239,7 @@ export class BattleScene extends Phaser.Scene {
     const h = this.hover;
     if (!h || h.x < 0 || h.y < 0 || h.x >= MAP_W || h.y >= MAP_H) return;
     let ok: boolean | null = null;
-    if (this.phase === 'landing') ok = this.deployment.canLand(h.x, h.y);
-    else if (this.phase === 'deploy' && this.tool) ok = this.deployment.canPlace(this.tool, h.x, h.y) === true;
+    if (this.phase === 'deploy' && this.tool) ok = this.deployment.canPlace(this.tool, h.x, h.y) === true;
     if (ok === null) {
       g.lineStyle(2, 0xffffff, 0.5);
       g.strokePoints(pointsOf(tileDiamond(h.x, h.y)), true);
@@ -263,9 +250,6 @@ export class BattleScene extends Phaser.Scene {
     if (this.phase === 'deploy' && this.tool && ok) {
       const range = Math.max(0, ...DEFS[this.tool].weapons.map(w => w.range));
       this.isoCircle(g, h.x + 0.5, h.y + 0.5, range, 0xffffff, 0.6);
-    }
-    if (this.phase === 'landing' && ok) {
-      this.isoCircle(g, h.x + 0.5, h.y + 0.5, this.deployment.campRadius, 0x7dff8a, 0.9);
     }
   }
 
@@ -401,11 +385,9 @@ export class BattleScene extends Phaser.Scene {
       }
       if (!this.hover) return;
       const { x, y } = this.hover;
-      if (this.phase === 'landing') {
-        if (this.deployment.land(x, y)) this.setPhase('deploy');
-      } else if (this.phase === 'deploy' && this.tool) {
+      if (this.phase === 'deploy' && this.tool) {
         this.deployment.place(this.tool, x, y, this.stance);
-        if (DEFS[this.tool].kind !== 'tower' && (this.deployment.roster[this.tool] ?? 0) <= 0) this.tool = null;
+        if ((this.deployment.roster[this.tool] ?? 0) <= 0) this.tool = null;
         this.hud.render();
       }
     });

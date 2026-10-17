@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { DAMAGE_MULT } from '../src/data/combat';
 import { DEFS, type DefId } from '../src/data/units';
 import { Battle } from '../src/sim/battle';
-import { autoDeploy, Deployment } from '../src/sim/deploy';
+import { autoDeploy } from '../src/sim/deploy';
 import { Grid } from '../src/sim/grid';
 import { Rng } from '../src/sim/rng';
-import { createPrototypeBattle, ENEMY_HQ_CENTER, PROTOTYPE_LOADOUT } from '../src/sim/scenario';
+import { createPrototypeBattle, DROP_RING, ENEMY_HQ_CENTER, MAP_W } from '../src/sim/scenario';
 
 function runToEnd(battle: Battle, maxSeconds = 900): void {
   battle.start();
@@ -67,18 +67,26 @@ describe('受击判定', () => {
 });
 
 describe('部署', () => {
-  it('营地里的建筑可以紧挨着摆，但不能叠在一起', () => {
-    const battle = new Battle(new Grid(20, 20), new Rng(1));
-    const dep = new Deployment(battle, PROTOTYPE_LOADOUT);
-    expect(dep.land(10, 10)).toBe(true);
-    expect(dep.place('mgTower', 10, 10, 'hold')).not.toBeNull();
-    expect(dep.canPlace('mgTower', 11, 10)).toBe(true);
-    expect(dep.canPlace('mgTower', 10, 10)).toBe('这里已被占用');
+  it('只能部署在敌方基地外圈的投送区', () => {
+    const { deployment } = createPrototypeBattle(1);
+    expect(deployment.canPlace('rifle', 1, 1)).toBe(true);
+    expect(deployment.canPlace('rifle', MAP_W - 1, 15)).toBe(true);
+    expect(deployment.canPlace('rifle', DROP_RING, DROP_RING)).toBe('只能部署在敌方基地外圈的投送区');
   });
 
-  it('营地不能落在建筑上', () => {
+  it('出击不能修建防御塔或工事', () => {
     const { deployment } = createPrototypeBattle(1);
-    expect(deployment.canLand(12, 11)).toBe(false);
+    expect(deployment.canPlace('mgTower', 1, 1)).toBe('出击不能修建防御塔或工事');
+    expect(deployment.canPlace('bunker', 1, 1)).toBe('出击不能修建防御塔或工事');
+  });
+
+  it('一格只放一支部队，撤回后名额返还', () => {
+    const { deployment } = createPrototypeBattle(1);
+    const before = deployment.roster.tank2!;
+    deployment.place('tank2', 1, 1, 'assault');
+    expect(deployment.canPlace('rifle', 1, 1)).toBe('这里已被占用');
+    deployment.removeAt(1, 1);
+    expect(deployment.roster.tank2).toBe(before);
   });
 });
 
@@ -121,21 +129,6 @@ describe('碉堡与地堡', () => {
     const fort = battle.spawn('bunker', 'player', 5, 5);
     expect(battle.garrison(battle.spawn('tank1', 'player', 6, 6), fort)).toBe(false);
   });
-
-  it('部署时把步兵放到己方工事上就是进驻，撤回工事连人一起撤回', () => {
-    const battle = new Battle(new Grid(20, 20), new Rng(1));
-    const dep = new Deployment(battle, PROTOTYPE_LOADOUT);
-    dep.land(10, 10);
-    const fort = dep.place('bunker', 10, 10, 'hold')!;
-    const before = dep.roster.rifle!;
-    dep.place('rifle', 11, 11, 'hold');
-    dep.place('rifle', 10, 10, 'hold');
-    expect(fort.garrison.length).toBe(2);
-    expect(dep.canPlace('tank1', 10, 10)).toBe('这里已被占用');
-    dep.removeAt(10, 10);
-    expect(dep.roster.rifle).toBe(before);
-    expect(battle.entities.length).toBe(0);
-  });
 });
 
 describe('寻路', () => {
@@ -160,17 +153,8 @@ describe('寻路', () => {
 describe('原型战斗', () => {
   function play(seed: number) {
     const { battle, deployment } = createPrototypeBattle(seed);
-    // 选被塔覆盖最少的投送点
-    let best: [number, number, number] | null = null;
-    for (let y = 0; y < battle.grid.h; y++) {
-      for (let x = 0; x < battle.grid.w; x++) {
-        if (!deployment.canLand(x, y)) continue;
-        const t = deployment.threatAt(x, y);
-        if (!best || t < best[2]) best = [x, y, t];
-      }
-    }
-    expect(best && deployment.land(best[0], best[1])).toBe(true);
     autoDeploy(deployment, ENEMY_HQ_CENTER);
+    expect(deployment.placed().length).toBeGreaterThan(0);
     runToEnd(battle);
     return battle;
   }
