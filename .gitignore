@@ -2,3 +2,4 @@ node_modules/
 dist/
 server/data/
 art/textures/
+__pycache__/
