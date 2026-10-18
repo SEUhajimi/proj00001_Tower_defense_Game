@@ -9,11 +9,16 @@ export interface Weapon {
   minRange?: number;
   type: DamageType;
   splash?: number;
+  salvo?: { n: number; spread: number }; // 齐射：一次打出 n 发，散布在目标周围 spread 格内（火箭炮）
+  ignoreStealth?: boolean; // 无视隐身（远程防空导弹）
 }
 
 // fort = 可驻防的工事；civil = 民用建筑（不开火，只是可以被摧毁的目标）
 // fighter / bomber = 飞机：不受地形阻挡，只有防空和重机枪打得到
-export type UnitKind = 'infantry' | 'tank' | 'fighter' | 'bomber' | 'tower' | 'fort' | 'civil' | 'hq';
+// trap = 地雷：对方看不见、打不到，有地面部队踩上去就炸，炸完就没了
+// obstacle = 障碍（铁丝网、拒马）：不能被直接攻击，只有爆炸能炸掉；不挡建筑，影响部队通行
+// support = 辅助建筑（雷达站）：不开火，给周围己方的塔加成
+export type UnitKind = 'infantry' | 'tank' | 'fighter' | 'bomber' | 'tower' | 'fort' | 'civil' | 'hq' | 'trap' | 'obstacle' | 'support';
 
 export interface Cost {
   steel?: number;
@@ -34,12 +39,18 @@ export interface UnitDef {
   capacity?: number; // 工事可驻防的步兵数
   rangeBonus?: number; // 驻防步兵的射程加成
   stealth?: boolean; // 隐身：受防空伤害减半
+  trigger?: number; // 地雷：敌方地面部队进到这么近（格）就引爆，伤害见 weapons[0]
+  slowInfantry?: boolean; // 铁丝网：步兵走过这一格速度减半
+  blockTanks?: boolean; // 拒马：坦克过不去（步兵可以）
+  aura?: { radius: number; rangeMult: number }; // 雷达：半径内己方塔射程 ×rangeMult，敌方隐身失效（半径不乘 RANGE_SCALE）
 }
 
 const coaxMg: Weapon = { dmg: 6, interval: 0.3, range: 4, type: 'bullet' };
 
 // 飞机的武器是航弹：飞到目标正上方才投，interval 就是出击间隔
 const bomb = (dmg: number, interval: number, splash: number): Weapon => ({ dmg, interval, range: 0, type: 'bomb', splash });
+// 战斗机的第二件武器：空战用的机炮和导弹，只打飞机（伤害类型同防空）
+const guns = (dmg: number): Weapon => ({ dmg, interval: 0.6, range: 1, type: 'aa' });
 
 export const DEFS = {
   rifle: {
@@ -81,23 +92,23 @@ export const DEFS = {
   },
   fighter1: {
     name: '一代战斗机 米格-15', kind: 'fighter', armor: 'air', hp: 300, speed: 5, radius: 0.4, size: 0,
-    weapons: [bomb(60, 6, 1)],
+    weapons: [bomb(60, 6, 1), guns(30)],
   },
   fighter2: {
     name: '二代战斗机 米格-21', kind: 'fighter', armor: 'air', hp: 400, speed: 5.5, radius: 0.4, size: 0,
-    weapons: [bomb(90, 6, 1)],
+    weapons: [bomb(90, 6, 1), guns(40)],
   },
   fighter3: {
     name: '三代战斗机 F-4', kind: 'fighter', armor: 'air', hp: 550, speed: 6, radius: 0.4, size: 0,
-    weapons: [bomb(130, 5, 1.5)],
+    weapons: [bomb(130, 5, 1.5), guns(55)],
   },
   fighter4: {
     name: '四代战斗机 F-16', kind: 'fighter', armor: 'air', hp: 750, speed: 6.5, radius: 0.4, size: 0,
-    weapons: [bomb(180, 5, 1.5)],
+    weapons: [bomb(180, 5, 1.5), guns(75)],
   },
   fighter5: {
     name: '五代战斗机 F-22', kind: 'fighter', armor: 'air', hp: 900, speed: 7, radius: 0.4, size: 0,
-    weapons: [bomb(240, 4, 1.5)], stealth: true,
+    weapons: [bomb(240, 4, 1.5), guns(100)], stealth: true,
   },
   bomber1: {
     name: '一级轰炸机 轰-6', kind: 'bomber', armor: 'air', hp: 1500, speed: 2.5, radius: 0.6, size: 0,
@@ -135,6 +146,44 @@ export const DEFS = {
     weapons: [{ dmg: 150, interval: 3, range: 6, type: 'ap' }],
     cost: { steel: 100, ammo: 40 },
   },
+  // 迫击炮：射程远、有近距盲区，曲射砸人堆
+  mortar: {
+    name: '迫击炮阵地', kind: 'tower', armor: 'building', hp: 1000, speed: 0, radius: 0.5, size: 1,
+    weapons: [{ dmg: 60, interval: 4, range: 11, minRange: 3, type: 'he', splash: 2 }],
+    cost: { steel: 70, ammo: 50 },
+  },
+  // 火箭炮：隔很久打一轮 12 发齐射，覆盖一大片
+  mlrs: {
+    name: '火箭炮', kind: 'tower', armor: 'building', hp: 1200, speed: 0, radius: 0.5, size: 1,
+    weapons: [{ dmg: 70, interval: 25, range: 13, minRange: 3, type: 'he', splash: 1.2, salvo: { n: 12, spread: 2.5 } }],
+    cost: { steel: 200, ammo: 120, electronics: 20 },
+  },
+  // 远程防空导弹：射程极远，专打飞机，无视隐身
+  samSite: {
+    name: '远程防空导弹', kind: 'tower', armor: 'building', hp: 1200, speed: 0, radius: 0.5, size: 1,
+    weapons: [{ dmg: 400, interval: 5, range: 16, type: 'aa', ignoreStealth: true }],
+    cost: { steel: 180, ammo: 60, electronics: 40 },
+  },
+  landmine: {
+    name: '地雷', kind: 'trap', armor: 'building', hp: 1, speed: 0, radius: 0.3, size: 1,
+    weapons: [{ dmg: 400, interval: 1, range: 0, type: 'demo', splash: 1 }], trigger: 0.6,
+    cost: { steel: 20, ammo: 30 },
+  },
+  barbedWire: {
+    name: '铁丝网', kind: 'obstacle', armor: 'building', hp: 150, speed: 0, radius: 0.5, size: 1,
+    weapons: [], slowInfantry: true,
+    cost: { steel: 10 },
+  },
+  tankTrap: {
+    name: '拒马', kind: 'obstacle', armor: 'building', hp: 600, speed: 0, radius: 0.5, size: 1,
+    weapons: [], blockTanks: true,
+    cost: { steel: 25 },
+  },
+  radar: {
+    name: '雷达站', kind: 'support', armor: 'building', hp: 1500, speed: 0, radius: 1, size: 2,
+    weapons: [], aura: { radius: 24, rangeMult: 1.2 },
+    cost: { steel: 120, electronics: 30 },
+  },
   // 工事本身不开火，靠驻防的步兵射击；驻防步兵打不到，工事被毁后弹出
   pillbox: {
     name: '碉堡', kind: 'fort', armor: 'building', hp: 1500, speed: 0, radius: 0.5, size: 1,
@@ -153,6 +202,11 @@ export const DEFS = {
   },
   civil3: {
     name: '民用建筑', kind: 'civil', armor: 'building', hp: 1800, speed: 0, radius: 1.5, size: 3,
+    weapons: [],
+  },
+  // 机场（8×4，占地在生成时给出）：战斗里是一个可以被摧毁的目标，被毁时还没起飞的飞机一起被毁
+  airbase: {
+    name: '机场', kind: 'civil', armor: 'building', hp: 4000, speed: 0, radius: 2, size: 4,
     weapons: [],
   },
   hq: {

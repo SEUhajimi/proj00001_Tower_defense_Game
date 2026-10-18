@@ -3,3 +3,4 @@ dist/
 server/data/
 art/textures/
 __pycache__/
+public/assets/rendered/debug/

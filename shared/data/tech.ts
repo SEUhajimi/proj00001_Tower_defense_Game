@@ -11,10 +11,10 @@ export interface TechStage {
 
 export const TECH_STAGES: TechStage[] = [
   { research: 0, gold: 0, items: ['rifle', 'smg', 'mgTower', 'pillbox'] }, // 开局自带
-  { research: 100, gold: 1000, items: ['mg', 'atTower', 'aaTower', 'bunker', 'tank1', 'fighter1'] },
-  { research: 300, gold: 3000, items: ['sniper', 'cannonTower', 'tank2', 'fighter2', 'bomber1'] },
-  { research: 800, gold: 8000, items: ['sapper', 'tank3', 'fighter3', 'bomber2'] },
-  { research: 2000, gold: 20000, items: ['fighter4', 'bomber3'] },
+  { research: 100, gold: 1000, items: ['mg', 'atTower', 'aaTower', 'bunker', 'mortar', 'landmine', 'tank1', 'fighter1'] },
+  { research: 300, gold: 3000, items: ['sniper', 'cannonTower', 'radar', 'tank2', 'fighter2', 'bomber1'] },
+  { research: 800, gold: 8000, items: ['sapper', 'mlrs', 'tank3', 'fighter3', 'bomber2'] },
+  { research: 2000, gold: 20000, items: ['samSite', 'fighter4', 'bomber3'] },
   { research: 5000, gold: 50000, items: ['tank4', 'fighter5', 'bomber4'] },
 ];
 

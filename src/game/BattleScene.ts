@@ -12,7 +12,10 @@ import { createDrill } from '../../shared/sim/world/drill';
 import { finishSortie, session } from './session';
 import { Hud } from '../ui/hud';
 import { footprintDiamond, pointsOf, TILE_H, TILE_W, tileDiamond, toScreen, toWorld } from './iso';
-import { dirIndex, FX_EXPLOSION, FX_SMOKE, groundKey, ROCK_KEYS, texAnchor, texLift, texScale, unitFrames } from './art';
+import {
+  damagedKey, dirIndex, flashKey, fxFrames, groundKey, PARKED_SCALE, propKeys, ruinKey, texAnchor, texLift, texScale, unitFrames,
+  type FxFrames,
+} from './art';
 import { BASE_INSET, makeBaseTextures, makeTextures, PLANE_ALT, SIDE_COLOR, textureKey } from './textures';
 
 export type Phase = 'deploy' | 'battle' | 'result';
@@ -40,11 +43,18 @@ interface Effect {
   frames?: string[];
 }
 
+// 枪口火光的显示大小（像素），按伤害类型；炸弹、炸药包没有火光
+const FLASH_SIZE: Record<DamageType, number> = { bullet: 10, hmg: 14, he: 24, ap: 22, demo: 0, aa: 16, bomb: 0 };
+const FIRE_FPS = 12;
+
 const SHOT_COLOR: Record<DamageType, number> = {
   bullet: 0xfff0a8, hmg: 0xffd24a, he: 0xff8a3c, ap: 0xff5cf0, demo: 0xff3b3b, aa: 0x3cffd2, bomb: 0xff8a3c,
 };
 
 const MAX_STEPS_PER_FRAME = 40;
+// 播放速度（只影响画面快慢，不影响结算）：默认 0.5 倍，看得清；换过就记住，下一场沿用
+const SPEEDS = [0.5, 1, 2, 4];
+let lastSpeed = 0.5;
 const PICK_RADIUS = 18; // 点选单位的容差（世界像素）
 const DRAG_THRESHOLD = 6; // 鼠标移动超过这么多像素才算拖动
 
@@ -54,7 +64,7 @@ export class BattleScene extends Phaser.Scene {
   phase: Phase = 'deploy';
   tool: DefId | null = null;
   stance: Stance = 'assault';
-  speed = 1;
+  speed = lastSpeed;
   paused = false;
   deployedCounts: Partial<Record<DefId, number>> = {};
   selected = new Set<number>(); // 交战时框选中的我方部队
@@ -82,11 +92,18 @@ export class BattleScene extends Phaser.Scene {
   private overlay!: Phaser.GameObjects.Graphics;
   private marks!: Phaser.GameObjects.Graphics; // 地面上的阵营圈和飞机影子
   private effects: Effect[] = [];
+  // 受损建筑上烧着的火：每座建筑几簇，循环播放
+  private fires = new Map<number, { img: Phaser.GameObjects.Image; phase: number }[]>();
+  private fireTime = 0;
   private hover: { x: number; y: number } | null = null;
   private dragFrom: { x: number; y: number; scrollX: number; scrollY: number } | null = null;
   // 框选：世界坐标矩形 + 起点屏幕坐标（用来判断是拖动还是单击）
   private box: { x0: number; y0: number; x1: number; y1: number; sx: number; sy: number } | null = null;
   private keys!: Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT', Phaser.Input.Keyboard.Key>;
+  private hoverTarget: Entity | null = null; // 选中部队时鼠标指着的敌人（右键就集火它）
+  private lastClick = { t: 0, defId: '' }; // 双击同一种兵：选中屏幕上全部同类
+  private groups = new Map<number, number[]>(); // 编组：数字键 → 部队编号
+  private lastGroupKey = { k: -1, t: 0 }; // 连按两下同一个数字：镜头跳过去
   private hud!: Hud;
 
   constructor() {
@@ -134,6 +151,8 @@ export class BattleScene extends Phaser.Scene {
     this.rocks = [];
     for (const fx of this.effects) fx.img?.destroy();
     this.effects = [];
+    for (const list of this.fires.values()) for (const f of list) f.img.destroy();
+    this.fires.clear();
     this.report = null;
     this.settling = false;
     this.settleError = null;
@@ -161,7 +180,7 @@ export class BattleScene extends Phaser.Scene {
     this.setupCamera();
     this.tool = null;
     this.paused = false;
-    this.speed = 1;
+    this.speed = lastSpeed;
     this.drawTerrain();
     this.setPhase('deploy');
   }
@@ -192,6 +211,13 @@ export class BattleScene extends Phaser.Scene {
     this.log.placements = this.deployment.placed().map(e => ({ id: e.id, defId: e.defId, x: e.x, y: e.y, stance: e.stance }));
     this.battle.start();
     this.setPhase('battle');
+  }
+
+  // 播放速度：0.5 → 1 → 2 → 4 → 0.5 循环
+  cycleSpeed(): void {
+    this.speed = SPEEDS[(SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length];
+    lastSpeed = this.speed;
+    this.hud.render();
   }
 
   // 有选中的部队就只改它们，否则改全军
@@ -264,6 +290,7 @@ export class BattleScene extends Phaser.Scene {
     this.syncSprites(alpha);
     this.drawMarks(alpha);
     this.updateEffects(deltaMs / 1000);
+    this.updateHover();
     this.drawOverlay(alpha);
     this.drawGhost();
   }
@@ -275,33 +302,83 @@ export class BattleScene extends Phaser.Scene {
         const a = byId(ev.from), b = byId(ev.to);
         if (!a || !b) continue;
         const p = this.muzzle(a), q = this.screenPos(b.x, b.y);
-        const lift = isAir(b) ? PLANE_ALT : 6;
+        const lift = isAir(b) ? PLANE_ALT * b.alt : 6;
         this.effects.push({ kind: 'line', x1: p.x, y1: p.y, x2: q.x, y2: q.y - lift, r: 0, color: SHOT_COLOR[ev.dmgType], t: 0.08, max: 0.08 });
+        const flash = flashKey(), fs = FLASH_SIZE[ev.dmgType];
+        if (flash && fs) this.anim({ keys: [flash], rendered: true }, p.x, p.y, fs, 0.06);
       } else if (ev.type === 'boom') {
-        const p = this.screenPos(ev.x, ev.y);
-        this.anim(FX_EXPLOSION, p.x, p.y, Math.max(28, ev.r * TILE_W * 0.9), 0.4);
+        const p = this.screenPos(ev.x, ev.y), fr = fxFrames('explosion');
+        if (fr) this.anim(fr, p.x, p.y, Math.max(28, ev.r * TILE_W * 0.9), 0.5);
       } else if (ev.type === 'death') {
         const e = byId(ev.id);
         if (!e) continue;
         const p = this.screenPos(e.x, e.y);
         const big = e.def.size > 0 || e.def.kind === 'tank' || isAir(e);
-        if (big) this.anim(FX_SMOKE, p.x, p.y - (isAir(e) ? PLANE_ALT : 10), e.def.size > 0 ? e.def.size * 40 : 40, 0.7);
+        const smoke = fxFrames('smoke');
+        if (big && smoke) this.anim(smoke, p.x, p.y - (isAir(e) ? PLANE_ALT * e.alt : 0), e.def.size > 0 ? e.def.size * 40 : 40, 0.9);
         else this.effects.push({ kind: 'ring', x1: p.x, y1: p.y, x2: 0, y2: 0, r: 10, color: 0xcccccc, t: 0.5, max: 0.5 });
+        if (e.def.size > 0) this.addRuin(e);
       }
     }
   }
 
-  // 爆炸、烟雾：逐帧换图，播完删除
-  private anim(frames: string[], x: number, y: number, size: number, dur: number): void {
-    const img = this.add.image(x, y - size * 0.3, frames[0]).setDepth(1e5);
-    img.setScale(size / img.width);
-    this.effects.push({ kind: 'anim', x1: x, y1: y, x2: 0, y2: 0, r: 0, color: 0, t: dur, max: dur, img, frames });
+  // 爆炸、烟雾、枪口火光：逐帧换图，播完删除。size 是显示宽度（像素）。
+  // 渲染图按锚点对准 (x, y)，团块只占图宽的六成左右，所以放大一些；Kenney 的图画在点的上方
+  private anim(fr: FxFrames, x: number, y: number, size: number, dur: number): void {
+    const img = this.add.image(x, y, fr.keys[0]).setDepth(1e5);
+    const a = fr.rendered ? texAnchor(fr.keys[0]) : null;
+    if (a) img.setOrigin(a.x, a.y).setScale(size / (img.width * 0.6));
+    else img.setPosition(x, y - size * 0.3).setScale(size / img.width);
+    this.effects.push({ kind: 'anim', x1: x, y1: y, x2: 0, y2: 0, r: 0, color: 0, t: dur, max: dur, img, frames: fr.keys });
+  }
+
+  // 建筑被摧毁：原地留一堆瓦砾（盖在地面上，比单位低）。机场的跑道炸不掉，留下受损的机场
+  private addRuin(e: Entity): void {
+    if (e.defId === 'airbase') {
+      const k = damagedKey(this.texKeyOf(e)) ?? this.texKeyOf(e), a = texAnchor(k);
+      const p = this.screenPos(e.x, e.y), img = this.add.image(p.x, p.y, k).setScale(texScale(k)).setDepth(e.tileX + e.tileY + 1);
+      if (a) img.setOrigin(a.x, a.y);
+      img.setTint(0x9a9a9a);
+      this.rocks.push(img);
+      return;
+    }
+    const key = ruinKey(e.def.size, e.id);
+    if (!key) return;
+    const p = this.screenPos(e.x, e.y), a = texAnchor(key)!;
+    this.rocks.push(this.add.image(p.x, p.y, key).setOrigin(a.x, a.y).setScale(texScale(key)).setDepth(e.x + e.y - e.def.size / 2));
+  }
+
+  // 受损建筑（血量一半以下）上的火：按占地大小摆 1–3 簇，建筑没了就熄灭
+  private syncFires(e: Entity, s?: Phaser.GameObjects.Image): void {
+    const burning = e.alive && e.hp <= e.def.hp / 2;
+    let list = this.fires.get(e.id);
+    if (!burning) {
+      if (list) { for (const f of list) f.img.destroy(); this.fires.delete(e.id); }
+      return;
+    }
+    const fr = fxFrames('fire');
+    if (!fr || list || !s) return;
+    list = [];
+    const lift = this.liftOf(e);
+    for (let k = 0; k < e.def.size; k++) {
+      // 用编号定位置，同一座建筑每次都烧在同样的地方
+      const h = (e.id * 7919 + k * 104729) % 1000 / 1000;
+      const x = s.x + (h - 0.5) * e.def.size * 28, y = s.y - lift * (0.45 + 0.4 * ((h * 7) % 1));
+      const img = this.add.image(x, y, fr.keys[0]).setDepth(s.depth + 0.1);
+      const a = texAnchor(fr.keys[0])!;
+      img.setOrigin(a.x, a.y).setScale(texScale(fr.keys[0]) * (0.45 + 0.15 * e.def.size));
+      list.push({ img, phase: Math.floor(h * fr.keys.length) });
+    }
+    this.fires.set(e.id, list);
   }
 
   // ---------- 绘制 ----------
 
   private texKeyOf(e: Entity): string {
-    return e.skin ? `bb-${e.skin}` : textureKey(e.defId, e.side);
+    if (!e.skin) return textureKey(e.defId, e.side);
+    // skin 里带着等级（house-l3）和机场朝向（airfield-r1-l3）；那一级没渲染就用不分级的
+    if (this.textures.exists(`bb-${e.skin}`)) return `bb-${e.skin}`;
+    return `bb-${e.skin.replace(/-(r\d-)?l\d$/, '')}`;
   }
 
   // 建筑顶面离地面多高（显示像素）：放炮管、血条、驻防人数用
@@ -317,7 +394,7 @@ export class BattleScene extends Phaser.Scene {
   private muzzle(e: Entity): Phaser.Math.Vector2 {
     const p = this.screenPos(e.x, e.y);
     const fort = e.inside !== null ? this.battle.get(e.inside) : undefined;
-    const lift = fort ? this.liftOf(fort, 16) : e.def.size > 0 ? this.liftOf(e) : 8;
+    const lift = fort ? this.liftOf(fort, 16) : e.def.size > 0 ? this.liftOf(e) : isAir(e) ? PLANE_ALT * e.alt : 8;
     p.y -= lift;
     return p;
   }
@@ -326,6 +403,7 @@ export class BattleScene extends Phaser.Scene {
     const g = this.terrain;
     g.clear();
     const grass = [0x8ab549, 0x85b045, 0x8fba4d];
+    const rockKeys = propKeys('rocks');
     // 有渲染的草地贴图就一块地（4×4 格）铺一张
     if (groundKey('plain', 0, 0)) {
       for (let by = 0; by < this.mapH; by += 4) {
@@ -342,9 +420,15 @@ export class BattleScene extends Phaser.Scene {
         g.fillStyle(grass[n]);
         g.fillPoints(pointsOf(tileDiamond(tx, ty)), true);
         if (this.battle.grid.rock[this.battle.grid.idx(tx, ty)]) {
-          const c = toScreen(tx + 0.5, ty + 0.5);
-          const rock = this.add.image(c.sx, c.sy + TILE_H / 2, ROCK_KEYS[(tx + ty) % ROCK_KEYS.length]).setOrigin(0.5, 1).setDepth(tx + ty + 1);
-          rock.setScale(TILE_W / rock.width);
+          const c = toScreen(tx + 0.5, ty + 0.5), key = rockKeys.keys[(tx + ty) % rockKeys.keys.length];
+          const rock = this.add.image(c.sx, c.sy, key).setDepth(tx + ty + 1);
+          if (rockKeys.rendered) {
+            // 石堆图按 2×2 格画的，战场上的岩石只占 1 格，缩小一半
+            const a = texAnchor(key)!;
+            rock.setOrigin(a.x, a.y).setScale(texScale(key) / 2);
+          } else {
+            rock.setPosition(c.sx, c.sy + TILE_H / 2).setOrigin(0.5, 1).setScale(TILE_W / rock.width);
+          }
           this.rocks.push(rock);
         }
       }
@@ -404,8 +488,10 @@ export class BattleScene extends Phaser.Scene {
   private syncSprites(alpha: number): void {
     for (const e of this.battle.entities) {
       let s = this.sprites.get(e.id);
-      if (!e.alive || e.inside !== null) {
+      // 敌方的地雷看不见
+      if (!e.alive || e.inside !== null || (e.def.kind === 'trap' && e.side !== 'player')) {
         if (s) { s.destroy(); this.sprites.delete(e.id); }
+        if (this.fires.has(e.id)) this.syncFires(e);
         continue;
       }
       if (!s) {
@@ -413,6 +499,7 @@ export class BattleScene extends Phaser.Scene {
         const key = frames ? frames[0] : this.texKeyOf(e);
         s = this.add.image(0, 0, key).setScale(texScale(key));
         if (e.skin && e.side === 'enemy') s.setTint(AI_TINT);
+        if (e.def.kind === 'trap') s.setAlpha(0.6); // 自己的地雷半透明，表示埋在地下
         const a = texAnchor(key);
         if (a) s.setOrigin(a.x, a.y);
         else s.setOrigin(0.5, e.def.size > 0 ? 1 : 0.5);
@@ -422,21 +509,28 @@ export class BattleScene extends Phaser.Scene {
       const p = toScreen(x, y);
       const frames = e.def.size > 0 ? null : unitFrames(e.defId, e.side);
       if (e.def.size > 0 && texAnchor(s.texture.key)) {
-        s.setPosition(p.sx, p.sy); // 渲染图的锚点就是占地中心
+        // 渲染图的锚点就是占地中心；血量一半以下换成受损的图，冒火
+        const base = this.texKeyOf(e), hurt = e.hp <= e.def.hp / 2 ? damagedKey(base) : null;
+        if (s.texture.key !== (hurt ?? base)) s.setTexture(hurt ?? base);
+        // 长方形的机场几乎是平的：层级按后排机库算，停在上面的飞机、跑道上的部队画在它上面
+        s.setPosition(p.sx, p.sy).setDepth(e.fw !== e.fh ? e.tileX + e.tileY + 1 : x + y);
+        this.syncFires(e, s);
       } else if (e.def.size > 0) {
         s.setPosition(p.sx, p.sy + (e.skin ? BASE_INSET : 0.8) * e.def.size * (TILE_H / 2));
       } else if (frames) {
         // 渲染的单位：按朝向换图，不转图片；锚点是脚下（飞机是机身中心，画在空中）
         s.setTexture(frames[dirIndex(e.facing)]);
         if (isAir(e)) {
-          s.setPosition(p.sx, p.sy - PLANE_ALT).setDepth(5000 + x + y);
+          // 停在机场上的飞机画小一些，起飞爬升时慢慢升高、变回原大；离地后画在所有地面物体之上
+          s.setScale(texScale(s.texture.key) * (PARKED_SCALE + (1 - PARKED_SCALE) * e.alt));
+          s.setPosition(p.sx, p.sy - PLANE_ALT * e.alt).setDepth(e.alt > 0.2 ? 5000 + x + y : x + y + 0.5);
           continue;
         }
         s.setPosition(p.sx, p.sy);
       } else if (isAir(e)) {
         // 飞机在高处，朝向按屏幕上的方向旋转；画在所有地面物体之上
         const d = toScreen(Math.cos(e.facing), Math.sin(e.facing));
-        s.setPosition(p.sx, p.sy - PLANE_ALT);
+        s.setPosition(p.sx, p.sy - PLANE_ALT * e.alt);
         s.setRotation(Math.atan2(d.sy, d.sx));
         s.setDepth(5000 + x + y);
         continue;
@@ -456,6 +550,12 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private updateEffects(dt: number): void {
+    this.fireTime += dt;
+    const fire = this.fires.size ? fxFrames('fire') : null;
+    if (fire) {
+      const f0 = Math.floor(this.fireTime * FIRE_FPS);
+      for (const list of this.fires.values()) for (const f of list) f.img.setTexture(fire.keys[(f0 + f.phase) % fire.keys.length]);
+    }
     for (const fx of this.effects) {
       fx.t -= dt;
       if (fx.img && fx.frames) {
@@ -476,7 +576,8 @@ export class BattleScene extends Phaser.Scene {
       const p = toScreen(e.px + (e.x - e.px) * alpha, e.py + (e.y - e.py) * alpha);
       if (isAir(e)) {
         g.fillStyle(0x000000, 0.22);
-        g.fillEllipse(p.sx, p.sy, e.def.kind === 'bomber' ? 30 : 18, e.def.kind === 'bomber' ? 12 : 7);
+        const k = PARKED_SCALE + (1 - PARKED_SCALE) * e.alt;
+        g.fillEllipse(p.sx, p.sy, (e.def.kind === 'bomber' ? 30 : 18) * k, (e.def.kind === 'bomber' ? 12 : 7) * k);
         continue;
       }
       const r = e.def.kind === 'tank' ? 18 : 9;
@@ -511,10 +612,10 @@ export class BattleScene extends Phaser.Scene {
           g.fillCircle(cx, y0, 3);
         }
       }
-      // 血条
-      if (e.hp < e.def.hp) {
+      // 血条（选中的部队一直显示；地雷没有）
+      if ((e.hp < e.def.hp || this.selected.has(e.id)) && e.def.kind !== 'trap') {
         const w = e.def.kind === 'hq' ? 80 : e.def.size > 0 || e.def.kind === 'tank' ? 34 : 18;
-        const lift = e.def.size > 0 ? this.liftOf(e) + 22 : isAir(e) ? PLANE_ALT + 18 : 22;
+        const lift = e.def.size > 0 ? this.liftOf(e) + 22 : isAir(e) ? PLANE_ALT * e.alt + 18 : 22;
         const bx = p.sx - w / 2, by = p.sy - lift;
         g.fillStyle(0x000000, 0.6);
         g.fillRect(bx - 1, by - 1, w + 2, 5);
@@ -544,7 +645,7 @@ export class BattleScene extends Phaser.Scene {
       const p = toScreen(e.px + (e.x - e.px) * alpha, e.py + (e.y - e.py) * alpha);
       const r = e.def.kind === 'tank' || e.def.kind === 'bomber' ? 20 : 11;
       g.lineStyle(2, 0x7dff8a, 0.95);
-      g.strokeEllipse(p.sx, p.sy, r * 2, r);
+      g.strokeEllipse(p.sx, p.sy - (isAir(e) ? PLANE_ALT * e.alt : 0), r * 2, r);
       if (e.order?.kind === 'attack') targets.add(e.order.targetId);
       if (e.order?.kind === 'move') {
         const m = toScreen(e.order.x, e.order.y);
@@ -554,11 +655,10 @@ export class BattleScene extends Phaser.Scene {
     }
     for (const id of targets) {
       const t = this.battle.get(id);
-      if (!t || !t.alive) continue;
-      g.lineStyle(2, 0xff4040, 0.95);
-      if (t.def.size > 0) g.strokePoints(pointsOf(footprintDiamond(t.tileX, t.tileY, t.def.size)), true);
-      else { const p = toScreen(t.x, t.y); g.strokeEllipse(p.sx, p.sy, 26, 13); }
+      if (t && t.alive) this.outlineTarget(g, t, 0.95);
     }
+    // 鼠标指着的敌人：右键就会集火它
+    if (this.hoverTarget && !targets.has(this.hoverTarget.id)) this.outlineTarget(g, this.hoverTarget, 0.6);
     if (this.box) {
       const { x0, y0, x1, y1 } = this.box;
       const x = Math.min(x0, x1), y = Math.min(y0, y1), w = Math.abs(x1 - x0), h = Math.abs(y1 - y0);
@@ -572,11 +672,99 @@ export class BattleScene extends Phaser.Scene {
   // ---------- 选择与命令 ----------
 
   private commandable(): Entity[] {
-    return this.battle.living('player').filter(e => isMobile(e) && e.inside === null);
+    return this.battle.living('player').filter(e => isMobile(e) && e.inside === null && !e.launch);
+  }
+
+  private outlineTarget(g: Phaser.GameObjects.Graphics, t: Entity, alpha: number): void {
+    g.lineStyle(2, 0xff4040, alpha);
+    if (t.def.size > 0) g.strokePoints(pointsOf(footprintDiamond(t.tileX, t.tileY, t.fw, t.fh)), true);
+    else { const p = toScreen(t.x, t.y); g.strokeEllipse(p.sx, p.sy - (isAir(t) ? PLANE_ALT * t.alt : 0), 26, 13); }
+  }
+
+  // 点选的容差：镜头拉远时单位变小，容差按屏幕像素算，不会越来越难点中
+  private pickRadius(): number {
+    return PICK_RADIUS / Math.min(1, this.cameras.main.zoom);
+  }
+
+  // 鼠标下的敌人：先看移动单位（飞机按画面上的高度），再看建筑的图——点在楼身上也算，不只是地面的占地
+  private enemyAt(wx: number, wy: number): Entity | null {
+    const units = this.battle.living('enemy').filter(e => isMobile(e) && e.inside === null && !(e.launch && e.alt < 0.5));
+    const unit = this.pickUnit(units, wx, wy);
+    if (unit) return unit;
+    let best: Entity | null = null, bestDepth = -Infinity;
+    for (const e of this.battle.living('enemy')) {
+      // 地雷看不见，障碍打不了，右键不选它们
+      if (e.def.size <= 0 || e.def.kind === 'trap' || e.def.kind === 'obstacle') continue;
+      const s = this.sprites.get(e.id);
+      if (!s || s.depth <= bestDepth || !s.getBounds().contains(wx, wy)) continue;
+      // 图里透明的地方（还有淡淡的影子）不算点中
+      const lx = (wx - s.x) / s.scaleX + s.displayOriginX, ly = (wy - s.y) / s.scaleY + s.displayOriginY;
+      if (this.textures.getPixelAlpha(Math.floor(lx), Math.floor(ly), s.texture.key) < 170) continue;
+      best = e;
+      bestDepth = s.depth;
+    }
+    if (best) return best;
+    const w = toWorld(wx, wy), grid = this.battle.grid, tx = Math.floor(w.x), ty = Math.floor(w.y);
+    const occ = grid.inBounds(tx, ty) ? grid.occupant[grid.idx(tx, ty)] : -1;
+    const b = occ === -1 ? undefined : this.battle.get(occ);
+    return b && b.side === 'enemy' && b.alive ? b : null;
+  }
+
+  // 每帧：选中了部队时，看鼠标指着的是不是敌人，换鼠标样式（准星 = 右键集火）
+  private updateHover(): void {
+    // activePointer 的 worldX 只在鼠标事件里换算过，镜头移动后会过时，这里按屏幕坐标重新算
+    const p = this.input.activePointer, w = this.cameras.main.getWorldPoint(p.x, p.y);
+    const target = this.phase === 'battle' && this.selected.size && !this.box ? this.enemyAt(w.x, w.y) : null;
+    if (target !== this.hoverTarget) {
+      this.hoverTarget = target;
+      this.input.setDefaultCursor(target ? 'crosshair' : 'default');
+    }
+  }
+
+  // 编组：Shift + 数字键把选中的部队编成一组，按数字键选中这一组，连按两下镜头跳过去
+  private groupKey(k: number, assign: boolean): void {
+    if (this.phase !== 'battle') return;
+    if (assign) {
+      if (this.selected.size) this.groups.set(k, [...this.selected]);
+      this.hud.render();
+      return;
+    }
+    const alive = (this.groups.get(k) ?? []).filter(id => this.battle.get(id)?.alive);
+    if (!alive.length) return;
+    this.selected = new Set(alive);
+    const now = this.time.now;
+    if (this.lastGroupKey.k === k && now - this.lastGroupKey.t < 400) {
+      const units = alive.map(id => this.battle.get(id)!);
+      const c = toScreen(units.reduce((s, u) => s + u.x, 0) / units.length, units.reduce((s, u) => s + u.y, 0) / units.length);
+      this.cameras.main.pan(c.sx, c.sy, 250, 'Sine.easeOut');
+    }
+    this.lastGroupKey = { k, t: now };
+    this.hud.render();
+  }
+
+  // 选中屏幕上看得见的全部同类部队
+  private selectSameOnScreen(defId: string, add: boolean): void {
+    if (!add) this.selected.clear();
+    const view = this.cameras.main.worldView;
+    for (const e of this.commandable()) {
+      if (e.defId !== defId) continue;
+      const p = toScreen(e.x, e.y);
+      if (view.contains(p.sx, p.sy - pickLift(e))) this.selected.add(e.id);
+    }
   }
 
   // 框选（世界像素矩形内的我方部队）或点选（离鼠标最近的一个）；add = 按住 Shift 追加
-  private selectAt(x0: number, y0: number, x1: number, y1: number, isBox: boolean, add: boolean): void {
+  private selectAt(x0: number, y0: number, x1: number, y1: number, isBox: boolean, add: boolean, same = false): void {
+    if (!isBox) {
+      const hit = this.pickUnit(this.commandable(), x1, y1), now = this.time.now;
+      const double = !!hit && this.lastClick.defId === hit.defId && now - this.lastClick.t < 350;
+      this.lastClick = { t: now, defId: hit?.defId ?? '' };
+      if (hit && (same || double)) {
+        this.selectSameOnScreen(hit.defId, add);
+        this.hud.render();
+        return;
+      }
+    }
     if (!add) this.selected.clear();
     if (isBox) {
       const lx = Math.min(x0, x1), hx = Math.max(x0, x1), ly = Math.min(y0, y1), hy = Math.max(y0, y1);
@@ -595,7 +783,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private pickUnit(units: Entity[], wx: number, wy: number): Entity | null {
-    let best: Entity | null = null, bestD = PICK_RADIUS;
+    let best: Entity | null = null, bestD = this.pickRadius();
     for (const e of units) {
       const p = toScreen(e.x, e.y);
       const d = Math.hypot(p.sx - wx, p.sy - pickLift(e) - wy);
@@ -608,15 +796,8 @@ export class BattleScene extends Phaser.Scene {
   private command(wx: number, wy: number): void {
     const ids = [...this.selected];
     if (!ids.length) return;
-    const enemyUnits = this.battle.living('enemy').filter(e => isMobile(e) && e.inside === null);
-    let target = this.pickUnit(enemyUnits, wx, wy);
+    const target = this.enemyAt(wx, wy);
     const w = toWorld(wx, wy), tx = Math.floor(w.x), ty = Math.floor(w.y);
-    if (!target) {
-      const grid = this.battle.grid;
-      const occ = grid.inBounds(tx, ty) ? grid.occupant[grid.idx(tx, ty)] : -1;
-      const b = occ === -1 ? undefined : this.battle.get(occ);
-      if (b && b.side === 'enemy' && b.alive) target = b;
-    }
     if (target) {
       this.battle.orderAttack(ids, target.id);
       this.log.commands.push({ step: this.battle.ticks, kind: 'attack', ids, targetId: target.id });
@@ -650,6 +831,11 @@ export class BattleScene extends Phaser.Scene {
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT') as typeof this.keys;
     kb.on('keydown-ESC', () => { this.selectTool(null); this.clearSelection(); });
     kb.on('keydown-SPACE', () => { if (this.phase === 'battle') { this.paused = !this.paused; this.hud.render(); } });
+    kb.on('keydown-A', (ev: KeyboardEvent) => { if (ev.ctrlKey && this.phase === 'battle') { ev.preventDefault(); this.selectAll(); } });
+    kb.on('keydown', (ev: KeyboardEvent) => {
+      const m = /^Digit([1-9])$/.exec(ev.code);
+      if (m && !ev.ctrlKey && !ev.altKey) this.groupKey(Number(m[1]), ev.shiftKey);
+    });
 
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       const w = toWorld(p.worldX, p.worldY);
@@ -688,7 +874,8 @@ export class BattleScene extends Phaser.Scene {
         this.box = null;
         if (this.phase === 'battle') {
           const isBox = Math.hypot(p.x - b.sx, p.y - b.sy) >= DRAG_THRESHOLD;
-          this.selectAt(b.x0, b.y0, p.worldX, p.worldY, isBox, p.event.shiftKey);
+          const ev = p.event as MouseEvent;
+          this.selectAt(b.x0, b.y0, p.worldX, p.worldY, isBox, ev.shiftKey, ev.ctrlKey);
         }
         return;
       }
@@ -723,5 +910,5 @@ export class BattleScene extends Phaser.Scene {
 
 // 点选时以单位画面上的身体位置为准：飞机在高处
 function pickLift(e: Entity): number {
-  return isAir(e) ? PLANE_ALT : 8;
+  return isAir(e) ? PLANE_ALT * e.alt : 8;
 }

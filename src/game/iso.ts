@@ -27,8 +27,9 @@ export function pointsOf(flat: number[]): Phaser.Math.Vector2[] {
 }
 
 // 占地 (tx, ty, size) 整块菱形的四个顶点
-export function footprintDiamond(tx: number, ty: number, size: number): number[] {
-  const top = toScreen(tx, ty), right = toScreen(tx + size, ty);
-  const bottom = toScreen(tx + size, ty + size), left = toScreen(tx, ty + size);
+// 占地的四个角（菱形），w × h 格；h 不给就是正方形
+export function footprintDiamond(tx: number, ty: number, w: number, h = w): number[] {
+  const top = toScreen(tx, ty), right = toScreen(tx + w, ty);
+  const bottom = toScreen(tx + w, ty + h), left = toScreen(tx, ty + h);
   return [top.sx, top.sy, right.sx, right.sy, bottom.sx, bottom.sy, left.sx, left.sy];
 }

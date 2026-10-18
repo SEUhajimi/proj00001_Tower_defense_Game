@@ -1,6 +1,6 @@
-import { baseDef, type BaseBuildingId } from '../../data/economy';
+import { baseDef, footprint, type BaseBuildingId } from '../../data/economy';
 import { DEFS, type DefId } from '../../data/units';
-import { Battle, type Entity } from '../battle';
+import { Battle, SCRAMBLE_GAP, type Entity } from '../battle';
 import type { Base } from '../base/base';
 import { troopLayout } from '../base/troops';
 import { PLOT_SIZE, REGION_PLOTS } from '../base/terrain';
@@ -23,9 +23,10 @@ export interface DrillBattle {
   mapH: number;
 }
 
-// 基地建筑在战斗里是什么：塔和工事照原样，市政厅是指挥部，其余是民用建筑
+// 基地建筑在战斗里是什么：塔和工事照原样，市政厅是指挥部，机场是机场，其余是民用建筑
 function battleDefOf(id: BaseBuildingId): DefId {
   if (id === 'hall') return 'hq';
+  if (id === 'airfield') return 'airbase';
   if (id in DEFS) return id as DefId;
   return baseDef(id).size >= 3 ? 'civil3' : 'civil2';
 }
@@ -48,17 +49,37 @@ export function createDrill(base: Base, attackers: Roster, seed: number): DrillB
 
   let hqCenter: Point = { x: mapW / 2, y: mapH / 2 };
   const forts: Entity[] = [];
+  const fields = new Map<number, Entity>(); // 机场 uid → 战斗里的机场
   for (const b of st.buildings) {
     const defId = battleDefOf(b.defId);
-    const skin = DEFS[defId].kind === 'civil' || defId === 'hq' ? b.defId : null;
-    const e = battle.spawn(defId, 'player', b.x + ox, b.y + oy, 'hold', skin);
+    // 建筑的画面按等级不同（机场还分朝向），记在 skin 里，只影响画面
+    const skin = b.defId === 'airfield' ? `airfield-r${b.rot ?? 0}-l${b.level ?? 1}`
+      : DEFS[defId].kind === 'civil' || defId === 'hq' ? `${b.defId}-l${b.level ?? 1}` : null;
+    const e = battle.spawn(defId, 'player', b.x + ox, b.y + oy, 'hold', skin, footprint(b.defId, b.rot ?? 0));
     if (defId === 'hq') hqCenter = { x: e.x, y: e.y };
     if (DEFS[defId].kind === 'fort') forts.push(e);
+    if (b.defId === 'airfield') fields.set(b.uid, e);
   }
 
-  // 部队：站在基地里摆好的位置驻守；站在工事上的步兵进驻（满了就站在旁边）；飞机只参与进攻，不守家
+  // 部队：站在基地里摆好的位置驻守；站在工事上的步兵进驻（满了就站在旁边）。
+  // 飞机停在机场机位上：开战后战斗机按顺序滑行、从跑道紧急升空迎敌，轰炸机留在机库
+  const queued = new Map<number, number>(); // 机场 uid → 已经排了几架起飞
   for (const t of troopLayout(base)) {
-    if (t.plane) continue;
+    if (t.plane) {
+      const field = t.airfield === undefined ? undefined : fields.get(t.airfield);
+      if (!field || !t.route) continue;
+      const plane = battle.spawn(t.defId, 'player', t.x + ox, t.y + oy, 'hold');
+      plane.facing = t.facing ?? 0;
+      const route = t.route.map(p => ({ x: p.x + ox, y: p.y + oy }));
+      let at: number | null = null;
+      if (DEFS[t.defId].kind === 'fighter') {
+        const k = queued.get(t.airfield!) ?? 0;
+        queued.set(t.airfield!, k + 1);
+        at = 1 + k * SCRAMBLE_GAP;
+      }
+      battle.park(plane, field, route, at);
+      continue;
+    }
     const x = t.x + ox, y = t.y + oy;
     const fort = DEFS[t.defId].kind === 'infantry'
       ? forts.find(f => x >= f.tileX && x < f.tileX + f.def.size && y >= f.tileY && y < f.tileY + f.def.size && f.garrison.length < (f.def.capacity ?? 0))

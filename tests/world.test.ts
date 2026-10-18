@@ -290,18 +290,50 @@ describe('一级据点能打', () => {
 });
 
 describe('军工建筑', () => {
-  it('征兵要有对应的建筑：步兵要兵营，坦克要战车工厂，飞机要飞机工厂', () => {
+  it('征兵要有对应的建筑：步兵要兵营，坦克要战车工厂，飞机要机场', () => {
     const b = fresh();
     b.state.res.steel = 5000; b.state.res.fuel = 5000; b.state.res.stone = 5000; b.state.res.electronics = 500;
     b.state.tech.push('tank1', 'fighter1');
     expect(b.canRecruit('rifle')).toBe(true);
     expect(b.canRecruit('tank1')).toBe('需要先建造战车工厂');
-    expect(b.canRecruit('fighter1')).toBe('需要先建造飞机工厂');
+    expect(b.canRecruit('fighter1')).toBe('需要先建造机场');
     const barracks = b.state.buildings.find(o => o.defId === 'barracks')!;
     expect(b.demolish(barracks.uid)).toBe(true);
     expect(b.canRecruit('rifle')).toBe('需要先建造兵营');
     const hall = b.state.buildings[0];
     expect(b.build('tankFactory', hall.x + 4, hall.y)).not.toBeTypeOf('string');
     expect(b.canRecruit('tank1')).toBe(true);
+  });
+});
+
+describe('机场和机库', () => {
+  it('飞机要停在机库里：每级一座机库 4 个机位，战斗机占 1 个、轰炸机占 2 个，满了要扩建（升级机场）', () => {
+    const b = fresh();
+    // 资源会被仓库上限截住，每步前补满
+    const rich = () => { for (const r of Object.keys(b.state.res) as (keyof typeof b.state.res)[]) b.state.res[r] = 5000; };
+    rich();
+    b.state.pop = 100;
+    b.state.tech.push('fighter1', 'bomber1');
+    const hall = b.state.buildings[0];
+    const field = b.build('airfield', hall.x + 4, hall.y);
+    if (typeof field === 'string') throw new Error(field);
+    expect(b.hangarCap()).toBe(4);
+    expect(b.recruit('fighter1', 3)).toBe(true);
+    expect(b.canRecruit('bomber1')).toBe('机库不够，到机场扩建机库（升级机场）');
+    expect(b.recruit('fighter1', 1)).toBe(true);
+    expect(b.hangarUsed()).toBe(4);
+    rich();
+    expect(b.upgrade(field.uid)).toBe(true);
+    rich();
+    expect(b.hangarCap()).toBe(8);
+    expect(b.recruit('bomber1', 1)).toBe(true);
+    expect(b.hangarUsed()).toBe(6);
+    // 在修的伤员飞机也占机库
+    b.state.army.fighter1 = 3;
+    b.state.wounded.push({ defId: 'fighter1', hp: 0.5 });
+    expect(b.hangarUsed()).toBe(6);
+    // 兵营、战车工厂还是不能升级
+    const barracks = b.state.buildings.find(o => o.defId === 'barracks')!;
+    expect(b.canUpgrade(barracks.uid)).toBe('这种建筑不能升级');
   });
 });

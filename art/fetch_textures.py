@@ -28,6 +28,10 @@ TEXTURES = {
     'green_metal': 'green_metal_rust',
     'metal_plate': 'metal_plate',
     'brick': 'red_brick_03',
+    'roof': 'clay_roof_tiles_02',
+    'planks': 'brown_planks_05',
+    'bark': 'bark_brown_02',
+    'facade': 'concrete_tile_facade',
 }
 
 MAPS = {'Diffuse': 'diff', 'nor_gl': 'nor', 'Rough': 'rough', 'arm': 'arm'}

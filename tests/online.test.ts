@@ -119,7 +119,7 @@ describe('存档在服务器', () => {
     const call = await player('p1');
     expect((await call('base')).data.state).toBeNull();
     const c = await call('base/claim', {});
-    expect(c.data.state.version).toBe(5);
+    expect(c.data.state.version).toBe(7);
     expect((await call('base/claim', {})).data.error).toBe('这个账号已经有存档了');
     expect((await call('base')).data.state.seed).toBe(c.data.state.seed);
   });

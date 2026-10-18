@@ -34,6 +34,7 @@ describe('飞机', () => {
 
     const c = arena();
     const bomber = c.spawn('bomber1', 'player', 10.5, 10.5);
+    bomber.cooldowns[0] = 999; // 刚投完弹在挂弹，炸不了防空炮
     c.spawn('aaTower', 'enemy', 10, 12);
     c.spawn('hq', 'enemy', 20, 20);
     run(c, 30);
@@ -67,14 +68,43 @@ describe('飞机', () => {
     expect(Math.hypot(bomber.x - 2.5, bomber.y - 2.5)).toBeLessThan(0.1);
   });
 
-  it('玩家的轰炸机没有命令就待在起飞点', () => {
+  it('轰炸机没有命令时自己去炸，先炸防空炮（哪怕更远）', () => {
+    const b = arena();
+    b.spawn('bomber1', 'player', 2.5, 2.5);
+    const mg = b.spawn('mgTower', 'enemy', 5, 5);
+    const aa = b.spawn('aaTower', 'enemy', 18, 18);
+    b.spawn('hq', 'enemy', 20, 2);
+    b.start();
+    for (let i = 0; i < 300 && aa.hp === DEFS.aaTower.hp; i++) b.step();
+    expect(aa.hp).toBeLessThan(DEFS.aaTower.hp);
+    expect(mg.hp).toBe(DEFS.mgTower.hp);
+  });
+
+  it('指定了目标的轰炸机先炸指定的', () => {
     const b = arena();
     const bomber = b.spawn('bomber1', 'player', 2.5, 2.5);
-    const tower = b.spawn('mgTower', 'enemy', 14, 14);
+    const mg = b.spawn('mgTower', 'enemy', 5, 5);
+    const aa = b.spawn('aaTower', 'enemy', 18, 18);
+    b.spawn('hq', 'enemy', 20, 2);
     b.start();
+    b.orderAttack([bomber.id], mg.id);
+    for (let i = 0; i < 300 && mg.hp === DEFS.mgTower.hp; i++) b.step();
+    expect(mg.hp).toBeLessThan(DEFS.mgTower.hp);
+    expect(aa.hp).toBe(DEFS.aaTower.hp);
+  });
+
+  it('战斗机听指挥：右键点敌机就去追着打', () => {
+    const b = arena(40);
+    b.spawn('hq', 'enemy', 36, 36);
+    b.spawn('hq', 'player', 1, 1);
+    const fighter = b.spawn('fighter2', 'player', 5, 5);
+    const near = b.spawn('bomber1', 'enemy', 10, 5);
+    const far = b.spawn('bomber1', 'enemy', 30, 30);
+    b.start();
+    b.orderAttack([fighter.id], far.id);
     for (let i = 0; i < 200; i++) b.step();
-    expect(tower.hp).toBe(DEFS.mgTower.hp);
-    expect(bomber.x).toBeCloseTo(2.5);
+    expect(far.hp).toBeLessThan(DEFS.bomber1.hp);
+    expect(near.hp).toBe(DEFS.bomber1.hp);
   });
 
   it('战斗机自动来回投弹，能炸毁建筑', () => {
@@ -138,6 +168,8 @@ describe('科技树', () => {
     b.research('atTower');
     expect(b.canResearch('sniper')).toBe('上一阶段研发过半后开放');
     b.research('aaTower');
+    expect(b.canResearch('sniper')).toBe('上一阶段研发过半后开放'); // 第二阶段 8 项，要研发 4 项
+    b.research('bunker');
     expect(b.canResearch('sniper')).toBe(true);
     expect(b.canResearch('tank2')).toBe('需要先研发一代坦克 T-55');
   });
@@ -202,7 +234,7 @@ describe('演习', () => {
 });
 
 describe('基地里的部队', () => {
-  it('没移动过的站在出厂建筑旁边、不压建筑；移动后记住位置；飞机停在飞机工厂上', () => {
+  it('没移动过的站在出厂建筑旁边、不压建筑；移动后记住位置；飞机停在机场上', () => {
     const base = new Base(newBaseState(7, T0));
     const layout = troopLayout(base);
     const army = Object.values(base.state.army).reduce((n, c) => n + (c ?? 0), 0);

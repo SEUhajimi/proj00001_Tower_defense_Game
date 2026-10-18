@@ -30,7 +30,9 @@ export function createAiBattle(ai: AiBase, roster: Roster, seed: number): AiBatt
   let hqCenter: Point = { x: mapSize / 2, y: mapSize / 2 };
   layout.buildings.forEach((b, i) => {
     const fortAlive = !lost.has(slotKey.building(i));
-    const e = fortAlive ? battle.spawn(b.defId, 'enemy', b.x + o, b.y + o, 'hold', b.skin) : null;
+    // 据点里的民用建筑按据点等级显示成几级的样子（只影响画面）
+    const skin = b.skin ? `${b.skin}-l${Math.min(5, ai.level)}` : null;
+    const e = fortAlive ? battle.spawn(b.defId, 'enemy', b.x + o, b.y + o, 'hold', skin) : null;
     if (e) slots.set(e.id, slotKey.building(i));
     if (b.defId === 'hq') hqCenter = { x: b.x + o + 1.5, y: b.y + o + 1.5 };
     b.garrison.forEach((u, k) => {

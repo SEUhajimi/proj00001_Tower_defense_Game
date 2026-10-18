@@ -37,8 +37,28 @@ export function powerInfo(base: Base): PowerInfo {
   return { supply, demand, efficiency: demand <= 0 ? 1 : Math.min(1, supply / demand) };
 }
 
-// 结算一段时间（小时）。调用方保证 hours 不超过一个步长。
-export function step(base: Base, hours: number): void {
+// 证券交易所的行情指数：以一天为周期在 0.5–1.5 之间涨落，起点由存档种子决定（各家行情不同步）
+const MARKET_DAY = 24 * MS_PER_HOUR;
+
+export function marketIndex(seed: number, at: number): number {
+  const phase = ((seed % 1000) / 1000) * 2 * Math.PI;
+  return 1 + 0.5 * Math.sin((2 * Math.PI * at) / MARKET_DAY + phase);
+}
+
+// 上市企业：国营、私营企业的等级总和
+export function listedLevels(base: Base): number {
+  return base.state.buildings.reduce((n, b) => n + (b.defId === 'stateEnterprise' || b.defId === 'privateEnterprise' ? levelOf(b) : 0), 0);
+}
+
+// 私营企业：雇了多少市民（不超过现有市民），每小时挣多少
+export function privateJobs(base: Base): { jobs: number; employed: number } {
+  let jobs = 0;
+  for (const b of base.state.buildings) jobs += (baseDef(b.defId).jobs?.per ?? 0) * levelOf(b);
+  return { jobs, employed: Math.min(jobs, Math.floor(base.state.pop)) };
+}
+
+// 结算一段时间（小时），at 是这段时间开始的时刻（毫秒，行情指数用）。调用方保证 hours 不超过一个步长。
+export function step(base: Base, hours: number, at = base.state.lastTick): void {
   const s = base.state, res = s.res, cap = base.storageCap();
   // 每座建筑的效果都乘以它的等级
   const defs = s.buildings.map(b => ({ d: baseDef(b.defId), k: levelOf(b) }));
@@ -78,6 +98,25 @@ export function step(base: Base, hours: number): void {
   // 税收
   res.gold = Math.min(cap.gold, res.gold + s.pop * TAX_PER_PERSON * s.taxRate * hours);
 
+  // 财政部的另外几条财路（都受电力影响）：私营企业按雇的人数、税率越高挣得越少；
+  // 银行按存款生息（不设上限，利率不随等级变，旧存档里多出来的银行也不叠加）；证券交易所按上市企业和行情
+  let jobGold = 0, interestRate = 0, listing = 0;
+  for (const b of s.buildings) {
+    const d = baseDef(b.defId), k = levelOf(b), e = powered(d.power);
+    if (d.jobs) jobGold += d.jobs.gold * e;
+    if (d.interest) interestRate = Math.max(interestRate, d.interest * e);
+    if (d.listing) listing += d.listing * k * e;
+  }
+  if (jobGold) {
+    // 平均每个岗位挣多少（不同私企通电情况不同时取平均）
+    const nPrivate = s.buildings.filter(b => baseDef(b.defId).jobs).length;
+    const { employed } = privateJobs(base);
+    res.gold += employed * (jobGold / nPrivate) * (1 - s.taxRate) * hours;
+  }
+  if (interestRate) res.gold += res.gold * interestRate * hours;
+  if (listing) res.gold += listing * listedLevels(base) * marketIndex(s.seed, at) * hours;
+  res.gold = Math.min(cap.gold, res.gold);
+
   // 附属据点上交产量的一部分（仓库放不下的作废）
   const vassals = base.vassals();
   for (const v of vassals) {
@@ -112,7 +151,7 @@ export function advanceTo(base: Base, now: number): { hours: number; gained: Res
   const elapsed = Math.min(now - s.lastTick, MAX_OFFLINE_MS);
   const before = { ...s.res };
   if (elapsed > 0) {
-    for (let left = elapsed; left > 0; left -= STEP_MS) step(base, Math.min(left, STEP_MS) / MS_PER_HOUR);
+    for (let left = elapsed, at = s.lastTick; left > 0; left -= STEP_MS, at += STEP_MS) step(base, Math.min(left, STEP_MS) / MS_PER_HOUR, at);
   }
   s.lastTick = Math.max(s.lastTick, now);
   for (const ai of s.ai) advanceAi(ai, now);

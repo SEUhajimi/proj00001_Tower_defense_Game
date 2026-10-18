@@ -2,13 +2,13 @@ import { DEFS, type DefId, type UnitDef } from './units';
 
 // 基地经营数值。产量单位：每小时（真实时间，关掉游戏也照常生产）。
 
-export const RESOURCES = ['gold', 'food', 'wood', 'stone', 'iron', 'oil', 'steel', 'fuel', 'ammo', 'electronics'] as const;
+export const RESOURCES = ['gold', 'food', 'wood', 'stone', 'steel', 'fuel', 'ammo', 'electronics'] as const;
 export type ResourceId = (typeof RESOURCES)[number];
 export type Amounts = Partial<Record<ResourceId, number>>;
 
 export const RESOURCE_NAME: Record<ResourceId, string> = {
-  gold: '金币', food: '粮食', wood: '木材', stone: '石料', iron: '铁矿',
-  oil: '原油', steel: '钢铁', fuel: '燃油', ammo: '弹药', electronics: '电子元件',
+  gold: '金币', food: '粮食', wood: '木材', stone: '石料',
+  steel: '钢铁', fuel: '燃油', ammo: '弹药', electronics: '电子元件',
 };
 
 export type Terrain = 'plain' | 'forest' | 'mountain' | 'iron' | 'oil';
@@ -27,7 +27,8 @@ export interface BaseBuildingDef {
   name: string;
   icon: string; // 屋顶上的字
   ministry: Ministry;
-  size: number;
+  size: number; // 正方形占地的边长；长方形的见 rect
+  rect?: [number, number]; // 长方形占地（长、宽），可以转 90° 摆放，见 footprint
   color: number;
   desc: string;
   cost: Amounts;
@@ -40,14 +41,18 @@ export interface BaseBuildingDef {
   research?: number; // 科研点 / 小时
   battleDef?: DefId; // 防御建筑：被进攻时对应的战斗单位
   factory?: boolean; // 军工建筑：在里面研发、生产对应的兵种（见 army.ts 的 FACTORY_UNITS）
+  hangars?: number; // 机场：每级几个机库（飞机停在机库里，满了就不能再造）
+  jobs?: { per: number; gold: number }; // 私营企业：每级雇 per 名市民，每人每小时挣 gold 金币 × (1 − 税率)
+  interest?: number; // 银行：存着的金币每小时生这么多利息（息差），不设上限；涨到仓库满为止
+  listing?: number; // 证券交易所：每小时 = listing × 上市企业（国营、私营企业）的等级总和 × 行情指数
   unique?: boolean; // 只能有一座，不能建造、移动以外的操作
-  upgradeCost?: Amounts; // 升级用的造价基数（没写就用 cost）；塔、工事、军工建筑不能升级
+  upgradeCost?: Amounts; // 升级用的造价基数（没写就用 cost）；塔、工事、兵营、战车工厂不能升级
 }
 
 // 市政厅自带的基础容量和供电
 export const HALL_STORAGE: Record<ResourceId, number> = {
-  gold: 3000, food: 1000, wood: 1000, stone: 1000, iron: 500,
-  oil: 500, steel: 500, fuel: 500, ammo: 300, electronics: 200,
+  gold: 3000, food: 1000, wood: 1000, stone: 1000,
+  steel: 500, fuel: 500, ammo: 300, electronics: 200,
 };
 
 export const TAX_PER_PERSON = 20; // 税率 100% 时每人每小时缴纳的金币
@@ -83,10 +88,31 @@ const civil = {
   },
 } satisfies Record<string, BaseBuildingDef>;
 
+// 财政部：除了收税，还有四种挣钱的办法，各走一条路子（见设计文档“财政”）
 const finance = {
   vault: {
     name: '金库', icon: '金', ministry: 'finance', size: 2, color: 0xf2d16b,
     desc: '金币容量 +10000', cost: { stone: 150, steel: 30 }, storage: { gold: 10000 },
+  },
+  stateEnterprise: {
+    name: '国营企业', icon: '国', ministry: 'finance', size: 3, color: 0xc0392b,
+    desc: '每小时用 10 钢铁、5 燃油，挣 300 金币。不受税率影响，稳定', cost: { stone: 300, steel: 200, gold: 500 },
+    consumes: { steel: 10, fuel: 5 }, produces: { gold: 300 }, power: -4,
+  },
+  privateEnterprise: {
+    name: '私营企业', icon: '私', ministry: 'finance', size: 2, color: 0x2e86c1,
+    desc: '雇 40 名市民，每人每小时挣 4 金币；税率越高挣得越少（税率 50% 时少一半）',
+    cost: { wood: 150, stone: 150, gold: 300 }, jobs: { per: 40, gold: 4 }, power: -2,
+  },
+  bank: {
+    name: '银行', icon: '银', ministry: 'finance', size: 2, color: 0xd4ac0d,
+    desc: '靠息差挣钱：存着的金币每小时生 2% 利息，不设上限（金币存满仓库就不再涨）。只能建一家，升级加金币容量',
+    cost: { stone: 200, steel: 80, gold: 1000 }, storage: { gold: 3000 }, interest: 0.02, power: -1,
+  },
+  stockExchange: {
+    name: '证券交易所', icon: '证', ministry: 'finance', size: 3, color: 0x7d3c98,
+    desc: '国营、私营企业上市交易：每小时 30 金币 × 两种企业的等级总和 × 行情指数（0.5–1.5，一天涨跌一轮）',
+    cost: { stone: 400, steel: 200, electronics: 30, gold: 2000 }, listing: 30, power: -3,
   },
 } satisfies Record<string, BaseBuildingDef>;
 
@@ -106,23 +132,14 @@ const defense = {
     name: '采石场', icon: '石', ministry: 'defense', size: 2, color: 0xa39882,
     desc: '每小时 +60 石料', cost: { wood: 60, gold: 50 }, produces: { stone: 60 },
   },
+  // 矿井、油井直接产出钢铁、燃油（不再经过铁矿、原油和炼钢厂、炼油厂）
   mine: {
     name: '矿井', icon: '矿', ministry: 'defense', size: 2, color: 0x9c5b45,
-    desc: '每小时 +50 铁矿', cost: { wood: 80, stone: 60 }, produces: { iron: 50 }, power: -2,
+    desc: '每小时 +30 钢铁（挖出来就地冶炼）', cost: { wood: 80, stone: 60 }, produces: { steel: 30 }, power: -3,
   },
   oilWell: {
     name: '油井', icon: '油', ministry: 'defense', size: 2, color: 0x3a3a46,
-    desc: '每小时 +40 原油', cost: { stone: 40, steel: 60 }, produces: { oil: 40 }, power: -2,
-  },
-  steelMill: {
-    name: '炼钢厂', icon: '钢', ministry: 'defense', size: 3, color: 0x7d8792,
-    desc: '每小时 40 铁矿 → 20 钢铁', cost: { wood: 80, stone: 150 },
-    consumes: { iron: 40 }, produces: { steel: 20 }, power: -4,
-  },
-  refinery: {
-    name: '炼油厂', icon: '炼', ministry: 'defense', size: 3, color: 0x5a6070,
-    desc: '每小时 30 原油 → 20 燃油', cost: { stone: 100, steel: 80 },
-    consumes: { oil: 30 }, produces: { fuel: 20 }, power: -4,
+    desc: '每小时 +35 燃油（抽出来就地炼好）', cost: { stone: 40, steel: 60 }, produces: { fuel: 35 }, power: -2,
   },
   arsenal: {
     name: '兵工厂', icon: '兵', ministry: 'defense', size: 3, color: 0x8b6b4a,
@@ -136,12 +153,12 @@ const defense = {
   },
   warehouse: {
     name: '物资仓库', icon: '仓', ministry: 'defense', size: 2, color: 0x8a6a4a,
-    desc: '木材、石料、铁矿、钢铁容量 +2000，电子元件 +500', cost: { wood: 100, stone: 60 },
-    storage: { wood: 2000, stone: 2000, iron: 2000, steel: 2000, electronics: 500 },
+    desc: '木材、石料、钢铁容量 +2000，电子元件 +500', cost: { wood: 100, stone: 60 },
+    storage: { wood: 2000, stone: 2000, steel: 2000, electronics: 500 },
   },
   oilDepot: {
     name: '油罐', icon: '罐', ministry: 'defense', size: 2, color: 0x4a4f5c,
-    desc: '原油、燃油容量各 +1500', cost: { stone: 40, steel: 60 }, storage: { oil: 1500, fuel: 1500 },
+    desc: '燃油容量 +2000', cost: { stone: 40, steel: 60 }, storage: { fuel: 2000 },
   },
   ammoDepot: {
     name: '弹药库', icon: '弹', ministry: 'defense', size: 2, color: 0x6e5a3a,
@@ -160,17 +177,19 @@ const military = {
     desc: '制造坦克', cost: { stone: 200, steel: 150 }, power: -5, factory: true,
   },
   airfield: {
-    name: '飞机工厂', icon: '机', ministry: 'defense', size: 3, color: 0x5f6f7a,
-    desc: '制造战斗机和轰炸机', cost: { stone: 300, steel: 250, electronics: 10 }, power: -6, factory: true,
+    name: '机场', icon: '机', ministry: 'defense', size: 4, rect: [8, 4], color: 0x5f6f7a,
+    desc: '生产并停放战斗机、轰炸机。有一条跑道，每级一座机库，每座停 4 架战斗机（轰炸机占 2 个位置），5 级停满 20 架。基地遭到进攻时战斗机从跑道紧急升空迎敌',
+    cost: { stone: 500, steel: 400, electronics: 20 }, upgradeCost: { stone: 200, steel: 150, electronics: 10 },
+    power: -8, factory: true, hangars: 4,
   },
 } satisfies Record<string, BaseBuildingDef>;
 
 // 布防：塔和工事直接沿用战斗数值，造价也一样
-function defenseFromBattle(id: DefId, icon: string, color: number): BaseBuildingDef {
+function defenseFromBattle(id: DefId, icon: string, color: number, desc?: string): BaseBuildingDef {
   const d = DEFS[id] as (typeof DEFS)[DefId] & { cost?: Amounts };
   return {
     name: d.name, icon, ministry: 'defense', size: d.size, color, cost: { ...d.cost },
-    desc: `基地被进攻时参战。血量 ${d.hp}`, battleDef: id,
+    desc: desc ?? `基地被进攻时参战。血量 ${d.hp}`, battleDef: id,
   };
 }
 
@@ -181,6 +200,13 @@ const fortifications = {
   aaTower: defenseFromBattle('aaTower', '空', 0x3cffd2),
   pillbox: defenseFromBattle('pillbox', '碉', 0x9aa3ab),
   bunker: defenseFromBattle('bunker', '堡', 0x8a939b),
+  mortar: defenseFromBattle('mortar', '迫', 0xd98c3c, '远程曲射，砸成群的步兵。射程很远，但打不到 12 格以内'),
+  mlrs: defenseFromBattle('mlrs', '箭', 0xe0553c, '每 25 秒一轮 12 发火箭齐射，覆盖一大片。打不到 12 格以内'),
+  samSite: defenseFromBattle('samSite', '导', 0x3cb4ff, '射程极远的防空导弹，专打飞机，无视隐身'),
+  radar: defenseFromBattle('radar', '达', 0x9ad0ff, '不开火。24 格内己方塔射程 +20%，敌方隐身飞机现形（防空伤害不再减半）'),
+  landmine: defenseFromBattle('landmine', '雷', 0x7a6a4a, '敌方看不见、打不到。地面部队踩上去就炸（坦克伤得最重），炸完就没了'),
+  barbedWire: defenseFromBattle('barbedWire', '网', 0x8a8a8a, '步兵走过减速一半。不能被直接攻击，只有爆炸能炸掉'),
+  tankTrap: defenseFromBattle('tankTrap', '拒', 0x6a6a6a, '坦克过不去，只能绕路（步兵照走）。连成一排能把坦克引到你想要的路线上'),
 };
 
 export const BASE_BUILDINGS = { ...civil, ...finance, ...tech, ...defense, ...military, ...fortifications };
@@ -190,13 +216,21 @@ export function baseDef(id: BaseBuildingId): BaseBuildingDef {
   return BASE_BUILDINGS[id];
 }
 
-// 升级：同一块地上效果翻倍，省出地方布防。等级 n 的产量、原料、耗电、发电、容量、住房、科研都是 1 级的 n 倍。
-// 升到 n 级花 n 倍的造价基数；塔、工事和军工建筑不能升级
+// 占地的宽（x 方向）和高（y 方向）。长方形建筑 rot = 0 时长边沿 x，rot = 1 时转 90°、长边沿 y
+export function footprint(id: BaseBuildingId, rot = 0): { w: number; h: number } {
+  const d = baseDef(id);
+  if (!d.rect) return { w: d.size, h: d.size };
+  const [a, b] = d.rect;
+  return rot ? { w: b, h: a } : { w: a, h: b };
+}
+
+// 升级：同一块地上效果翻倍，省出地方布防。等级 n 的产量、原料、耗电、发电、容量、住房、科研、机库都是 1 级的 n 倍。
+// 升到 n 级花 n 倍的造价基数；塔、工事、兵营、战车工厂不能升级（机场能升，升级就是扩建机库）
 export const MAX_LEVEL = 5;
 
 export function upgradable(id: BaseBuildingId): boolean {
   const d = baseDef(id);
-  return !d.battleDef && !d.factory;
+  return !d.battleDef && (!d.factory || !!d.hangars);
 }
 
 // 每种建筑最多能建几座，按市政厅等级（1–5 级）取。升级市政厅来提高上限
@@ -207,13 +241,15 @@ export const BUILD_LIMITS: Record<Exclude<BaseBuildingId, 'hall'>, number[]> = {
   powerPlant: [1, 2, 3, 4, 5],
   granary: [1, 1, 2, 2, 3],
   vault: [1, 1, 2, 2, 3],
+  stateEnterprise: [1, 1, 2, 2, 3],
+  privateEnterprise: [1, 2, 3, 4, 5],
+  bank: [1, 1, 1, 1, 1],
+  stockExchange: [0, 0, 1, 1, 1],
   lab: [1, 1, 2, 3, 4],
   lumberMill: [1, 2, 2, 3, 4],
   quarry: [1, 2, 2, 3, 4],
   mine: [1, 1, 2, 3, 4],
   oilWell: [1, 1, 2, 3, 4],
-  steelMill: [1, 1, 2, 2, 3],
-  refinery: [1, 1, 2, 2, 3],
   arsenal: [1, 1, 2, 2, 3],
   electronicsPlant: [1, 1, 2, 2, 3],
   warehouse: [1, 2, 2, 3, 4],
@@ -221,13 +257,20 @@ export const BUILD_LIMITS: Record<Exclude<BaseBuildingId, 'hall'>, number[]> = {
   ammoDepot: [1, 2, 2, 3, 4],
   barracks: [1, 1, 2, 2, 3],
   tankFactory: [1, 1, 2, 2, 3],
-  airfield: [1, 1, 2, 2, 3],
+  airfield: [1, 1, 1, 2, 2],
   mgTower: [4, 6, 8, 10, 12],
   cannonTower: [2, 3, 4, 6, 8],
   atTower: [2, 3, 4, 6, 8],
   aaTower: [2, 3, 4, 5, 6],
   pillbox: [2, 3, 4, 5, 6],
   bunker: [1, 2, 3, 4, 5],
+  mortar: [2, 3, 4, 5, 6],
+  mlrs: [1, 1, 2, 2, 3],
+  samSite: [1, 1, 2, 3, 4],
+  radar: [1, 1, 1, 2, 2],
+  landmine: [6, 10, 14, 18, 24],
+  barbedWire: [12, 20, 30, 40, 50],
+  tankTrap: [8, 12, 18, 24, 30],
 };
 
 export function buildLimit(id: BaseBuildingId, hallLevel: number): number {
@@ -252,8 +295,8 @@ export function upgradeCost(id: BaseBuildingId, toLevel: number): Amounts {
 }
 
 export const START_RESOURCES: Record<ResourceId, number> = {
-  gold: 1500, food: 300, wood: 500, stone: 400, iron: 0,
-  oil: 0, steel: 150, fuel: 0, ammo: 60, electronics: 0,
+  gold: 1500, food: 300, wood: 500, stone: 400,
+  steel: 150, fuel: 200, ammo: 60, electronics: 0,
 };
 export const START_POP = 20;
 export const START_TAX = 0.1;

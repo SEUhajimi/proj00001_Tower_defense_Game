@@ -33,12 +33,18 @@ export const TRAINING: Partial<Record<DefId, TrainingDef>> = {
 
 export const TRAINABLE = Object.keys(TRAINING) as DefId[];
 
-// 兵种在哪种建筑里研发和生产：步兵在兵营，坦克在战车工厂，飞机在飞机工厂
+// 兵种在哪种建筑里研发和生产：步兵在兵营，坦克在战车工厂，飞机在机场
 export type FactoryId = Extract<BaseBuildingId, 'barracks' | 'tankFactory' | 'airfield'>;
 
 export function factoryOf(id: DefId): FactoryId {
   const kind = DEFS[id].kind;
   return kind === 'tank' ? 'tankFactory' : kind === 'fighter' || kind === 'bomber' ? 'airfield' : 'barracks';
+}
+
+// 一架飞机占几个机库：战斗机 1 个，轰炸机 2 个；不是飞机的是 0
+export function hangarNeed(id: DefId): number {
+  const kind = DEFS[id].kind;
+  return kind === 'fighter' ? 1 : kind === 'bomber' ? 2 : 0;
 }
 
 export const FACTORY_UNITS: Record<FactoryId, DefId[]> = {

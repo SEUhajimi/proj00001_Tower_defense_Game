@@ -74,14 +74,29 @@ def shadow_catcher(size: float = 12) -> None:
     bpy.context.active_object.is_shadow_catcher = True
 
 
-def render(rel: str, w: int, h: int, shift_y: float) -> None:
+def top_height() -> float:
+    """场景里最高点的高度（格），阴影接收面不算。"""
+    top = 0.0
+    for o in bpy.context.scene.objects:
+        if o.type != 'MESH' or o.is_shadow_catcher or o.hide_render:
+            continue
+        top = max(top, max((o.matrix_world @ Vector(c)).z for c in o.bound_box))
+    return top
+
+
+def lift_px(z: float) -> float:
+    """高度 z（格）在游戏画面上（1 倍分辨率）往上偏多少像素。"""
+    return z * PX_PER_UNIT / 2 * math.cos(ELEVATION)
+
+
+def render(rel: str, w: int, h: int, shift_y: float, extra: dict | None = None) -> None:
     path = os.path.join(OUT, rel)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     bpy.context.scene.render.filepath = path
     bpy.ops.render.render(write_still=True)
     # 锚点：世界原点在图里的像素位置（游戏里把它对准占地中心或单位脚下）
     big = max(w, h)
-    manifest[rel.replace('\\', '/')] = {'w': w, 'h': h, 'ax': w / 2, 'ay': h / 2 + shift_y * big}
+    manifest[rel.replace('\\', '/')] = {'w': w, 'h': h, 'ax': w / 2, 'ay': h / 2 + shift_y * big, **(extra or {})}
     print('rendered', rel)
 
 

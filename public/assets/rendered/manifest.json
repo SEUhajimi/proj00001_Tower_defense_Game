@@ -1,15 +1,2155 @@
 {
- "buildings/barracks-enemy.png": {
+ "buildings/aaTower-enemy-damaged.png": {
+  "ax": 144.5,
+  "ay": 167.62,
+  "h": 289,
+  "lift": 30.2,
+  "w": 289
+ },
+ "buildings/aaTower-enemy.png": {
+  "ax": 144.5,
+  "ay": 167.62,
+  "h": 289,
+  "lift": 30.2,
+  "w": 289
+ },
+ "buildings/aaTower-player-damaged.png": {
+  "ax": 144.5,
+  "ay": 167.62,
+  "h": 289,
+  "lift": 30.2,
+  "w": 289
+ },
+ "buildings/aaTower-player.png": {
+  "ax": 144.5,
+  "ay": 167.62,
+  "h": 289,
+  "lift": 30.2,
+  "w": 289
+ },
+ "buildings/airfield-player-r0-l1-damaged.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r0-l1.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r0-l2-damaged.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r0-l2.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r0-l3-damaged.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r0-l3.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r0-l4-damaged.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r0-l4.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r0-l5-damaged.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r0-l5.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r1-l1-damaged.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r1-l1.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r1-l2-damaged.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r1-l2.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r1-l3-damaged.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r1-l3.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r1-l4-damaged.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r1-l4.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r1-l5-damaged.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/airfield-player-r1-l5.png": {
+  "ax": 555.0,
+  "ay": 643.8,
+  "h": 1110,
+  "lift": 39.2,
+  "w": 1110
+ },
+ "buildings/ammoDepot-player-l1-damaged.png": {
+  "ax": 207.0,
+  "ay": 240.12,
+  "h": 414,
+  "lift": 15.0,
+  "w": 414
+ },
+ "buildings/ammoDepot-player-l1.png": {
+  "ax": 207.0,
+  "ay": 240.12,
+  "h": 414,
+  "lift": 15.0,
+  "w": 414
+ },
+ "buildings/ammoDepot-player-l2-damaged.png": {
+  "ax": 212.0,
+  "ay": 245.92000000000002,
+  "h": 424,
+  "lift": 19.4,
+  "w": 424
+ },
+ "buildings/ammoDepot-player-l2.png": {
+  "ax": 212.0,
+  "ay": 245.92000000000002,
+  "h": 424,
+  "lift": 19.4,
+  "w": 424
+ },
+ "buildings/ammoDepot-player-l3-damaged.png": {
+  "ax": 208.0,
+  "ay": 241.28,
+  "h": 416,
+  "lift": 15.9,
+  "w": 416
+ },
+ "buildings/ammoDepot-player-l3.png": {
+  "ax": 208.0,
+  "ay": 241.28,
+  "h": 416,
+  "lift": 15.9,
+  "w": 416
+ },
+ "buildings/ammoDepot-player-l4-damaged.png": {
   "ax": 240.0,
-  "ay": 297.6,
+  "ay": 278.4,
   "h": 480,
+  "lift": 43.7,
   "w": 480
  },
- "buildings/barracks-player.png": {
+ "buildings/ammoDepot-player-l4.png": {
   "ax": 240.0,
-  "ay": 297.6,
+  "ay": 278.4,
   "h": 480,
+  "lift": 43.7,
   "w": 480
+ },
+ "buildings/ammoDepot-player-l5-damaged.png": {
+  "ax": 240.0,
+  "ay": 278.4,
+  "h": 480,
+  "lift": 43.7,
+  "w": 480
+ },
+ "buildings/ammoDepot-player-l5.png": {
+  "ax": 240.0,
+  "ay": 278.4,
+  "h": 480,
+  "lift": 43.7,
+  "w": 480
+ },
+ "buildings/arsenal-player-l1-damaged.png": {
+  "ax": 311.0,
+  "ay": 360.76,
+  "h": 622,
+  "lift": 36.1,
+  "w": 622
+ },
+ "buildings/arsenal-player-l1.png": {
+  "ax": 311.0,
+  "ay": 360.76,
+  "h": 622,
+  "lift": 36.1,
+  "w": 622
+ },
+ "buildings/arsenal-player-l2-damaged.png": {
+  "ax": 311.0,
+  "ay": 360.76,
+  "h": 622,
+  "lift": 36.1,
+  "w": 622
+ },
+ "buildings/arsenal-player-l2.png": {
+  "ax": 311.0,
+  "ay": 360.76,
+  "h": 622,
+  "lift": 36.1,
+  "w": 622
+ },
+ "buildings/arsenal-player-l3-damaged.png": {
+  "ax": 332.5,
+  "ay": 385.7,
+  "h": 665,
+  "lift": 54.9,
+  "w": 665
+ },
+ "buildings/arsenal-player-l3.png": {
+  "ax": 332.5,
+  "ay": 385.7,
+  "h": 665,
+  "lift": 54.9,
+  "w": 665
+ },
+ "buildings/arsenal-player-l4-damaged.png": {
+  "ax": 332.5,
+  "ay": 385.7,
+  "h": 665,
+  "lift": 54.9,
+  "w": 665
+ },
+ "buildings/arsenal-player-l4.png": {
+  "ax": 332.5,
+  "ay": 385.7,
+  "h": 665,
+  "lift": 54.9,
+  "w": 665
+ },
+ "buildings/arsenal-player-l5-damaged.png": {
+  "ax": 332.5,
+  "ay": 385.7,
+  "h": 665,
+  "lift": 54.9,
+  "w": 665
+ },
+ "buildings/arsenal-player-l5.png": {
+  "ax": 332.5,
+  "ay": 385.7,
+  "h": 665,
+  "lift": 54.9,
+  "w": 665
+ },
+ "buildings/atTower-enemy-damaged.png": {
+  "ax": 130.5,
+  "ay": 151.38,
+  "h": 261,
+  "lift": 18.0,
+  "w": 261
+ },
+ "buildings/atTower-enemy.png": {
+  "ax": 130.5,
+  "ay": 151.38,
+  "h": 261,
+  "lift": 18.0,
+  "w": 261
+ },
+ "buildings/atTower-player-damaged.png": {
+  "ax": 130.5,
+  "ay": 151.38,
+  "h": 261,
+  "lift": 18.0,
+  "w": 261
+ },
+ "buildings/atTower-player.png": {
+  "ax": 130.5,
+  "ay": 151.38,
+  "h": 261,
+  "lift": 18.0,
+  "w": 261
+ },
+ "buildings/bank-player-l1-damaged.png": {
+  "ax": 222.0,
+  "ay": 257.52,
+  "h": 444,
+  "lift": 28.2,
+  "w": 444
+ },
+ "buildings/bank-player-l1.png": {
+  "ax": 222.0,
+  "ay": 257.52,
+  "h": 444,
+  "lift": 28.2,
+  "w": 444
+ },
+ "buildings/bank-player-l2-damaged.png": {
+  "ax": 236.5,
+  "ay": 274.34000000000003,
+  "h": 473,
+  "lift": 40.8,
+  "w": 473
+ },
+ "buildings/bank-player-l2.png": {
+  "ax": 236.5,
+  "ay": 274.34000000000003,
+  "h": 473,
+  "lift": 40.8,
+  "w": 473
+ },
+ "buildings/bank-player-l3-damaged.png": {
+  "ax": 251.0,
+  "ay": 291.15999999999997,
+  "h": 502,
+  "lift": 53.3,
+  "w": 502
+ },
+ "buildings/bank-player-l3.png": {
+  "ax": 251.0,
+  "ay": 291.15999999999997,
+  "h": 502,
+  "lift": 53.3,
+  "w": 502
+ },
+ "buildings/bank-player-l4-damaged.png": {
+  "ax": 266.0,
+  "ay": 308.56,
+  "h": 532,
+  "lift": 66.2,
+  "w": 532
+ },
+ "buildings/bank-player-l4.png": {
+  "ax": 266.0,
+  "ay": 308.56,
+  "h": 532,
+  "lift": 66.2,
+  "w": 532
+ },
+ "buildings/bank-player-l5-damaged.png": {
+  "ax": 299.0,
+  "ay": 346.84000000000003,
+  "h": 598,
+  "lift": 95.0,
+  "w": 598
+ },
+ "buildings/bank-player-l5.png": {
+  "ax": 299.0,
+  "ay": 346.84000000000003,
+  "h": 598,
+  "lift": 95.0,
+  "w": 598
+ },
+ "buildings/barbedWire-player-damaged.png": {
+  "ax": 126.5,
+  "ay": 146.74,
+  "h": 253,
+  "lift": 14.7,
+  "w": 253
+ },
+ "buildings/barbedWire-player.png": {
+  "ax": 126.5,
+  "ay": 146.74,
+  "h": 253,
+  "lift": 14.7,
+  "w": 253
+ },
+ "buildings/barracks-enemy-damaged.png": {
+  "ax": 342.0,
+  "ay": 396.72,
+  "h": 684,
+  "lift": 62.7,
+  "w": 684
+ },
+ "buildings/barracks-enemy.png": {
+  "ax": 342.0,
+  "ay": 396.72,
+  "h": 684,
+  "lift": 62.7,
+  "w": 684
+ },
+ "buildings/barracks-player-damaged.png": {
+  "ax": 342.0,
+  "ay": 396.72,
+  "h": 684,
+  "lift": 62.7,
+  "w": 684
+ },
+ "buildings/barracks-player.png": {
+  "ax": 342.0,
+  "ay": 396.72,
+  "h": 684,
+  "lift": 62.7,
+  "w": 684
+ },
+ "buildings/bunker-enemy-damaged.png": {
+  "ax": 252.5,
+  "ay": 292.9,
+  "h": 505,
+  "lift": 54.9,
+  "w": 505
+ },
+ "buildings/bunker-enemy.png": {
+  "ax": 252.5,
+  "ay": 292.9,
+  "h": 505,
+  "lift": 54.9,
+  "w": 505
+ },
+ "buildings/bunker-player-damaged.png": {
+  "ax": 252.5,
+  "ay": 292.9,
+  "h": 505,
+  "lift": 54.9,
+  "w": 505
+ },
+ "buildings/bunker-player.png": {
+  "ax": 252.5,
+  "ay": 292.9,
+  "h": 505,
+  "lift": 54.9,
+  "w": 505
+ },
+ "buildings/cannonTower-enemy-damaged.png": {
+  "ax": 154.5,
+  "ay": 179.22,
+  "h": 309,
+  "lift": 39.0,
+  "w": 309
+ },
+ "buildings/cannonTower-enemy.png": {
+  "ax": 154.5,
+  "ay": 179.22,
+  "h": 309,
+  "lift": 39.0,
+  "w": 309
+ },
+ "buildings/cannonTower-player-damaged.png": {
+  "ax": 154.5,
+  "ay": 179.22,
+  "h": 309,
+  "lift": 39.0,
+  "w": 309
+ },
+ "buildings/cannonTower-player.png": {
+  "ax": 154.5,
+  "ay": 179.22,
+  "h": 309,
+  "lift": 39.0,
+  "w": 309
+ },
+ "buildings/civil2-enemy-damaged.png": {
+  "ax": 239.0,
+  "ay": 277.24,
+  "h": 478,
+  "lift": 42.9,
+  "w": 478
+ },
+ "buildings/civil2-enemy.png": {
+  "ax": 239.0,
+  "ay": 277.24,
+  "h": 478,
+  "lift": 42.9,
+  "w": 478
+ },
+ "buildings/civil2-player-damaged.png": {
+  "ax": 239.0,
+  "ay": 277.24,
+  "h": 478,
+  "lift": 42.9,
+  "w": 478
+ },
+ "buildings/civil2-player.png": {
+  "ax": 239.0,
+  "ay": 277.24,
+  "h": 478,
+  "lift": 42.9,
+  "w": 478
+ },
+ "buildings/civil3-enemy-damaged.png": {
+  "ax": 321.5,
+  "ay": 372.94,
+  "h": 643,
+  "lift": 44.9,
+  "w": 643
+ },
+ "buildings/civil3-enemy.png": {
+  "ax": 321.5,
+  "ay": 372.94,
+  "h": 643,
+  "lift": 44.9,
+  "w": 643
+ },
+ "buildings/civil3-player-damaged.png": {
+  "ax": 321.5,
+  "ay": 372.94,
+  "h": 643,
+  "lift": 44.9,
+  "w": 643
+ },
+ "buildings/civil3-player.png": {
+  "ax": 321.5,
+  "ay": 372.94,
+  "h": 643,
+  "lift": 44.9,
+  "w": 643
+ },
+ "buildings/electronicsPlant-player-l1-damaged.png": {
+  "ax": 310.0,
+  "ay": 359.6,
+  "h": 620,
+  "lift": 34.9,
+  "w": 620
+ },
+ "buildings/electronicsPlant-player-l1.png": {
+  "ax": 310.0,
+  "ay": 359.6,
+  "h": 620,
+  "lift": 34.9,
+  "w": 620
+ },
+ "buildings/electronicsPlant-player-l2-damaged.png": {
+  "ax": 319.0,
+  "ay": 370.04,
+  "h": 638,
+  "lift": 42.7,
+  "w": 638
+ },
+ "buildings/electronicsPlant-player-l2.png": {
+  "ax": 319.0,
+  "ay": 370.04,
+  "h": 638,
+  "lift": 42.7,
+  "w": 638
+ },
+ "buildings/electronicsPlant-player-l3-damaged.png": {
+  "ax": 328.0,
+  "ay": 380.48,
+  "h": 656,
+  "lift": 50.6,
+  "w": 656
+ },
+ "buildings/electronicsPlant-player-l3.png": {
+  "ax": 328.0,
+  "ay": 380.48,
+  "h": 656,
+  "lift": 50.6,
+  "w": 656
+ },
+ "buildings/electronicsPlant-player-l4-damaged.png": {
+  "ax": 328.0,
+  "ay": 380.48,
+  "h": 656,
+  "lift": 50.6,
+  "w": 656
+ },
+ "buildings/electronicsPlant-player-l4.png": {
+  "ax": 328.0,
+  "ay": 380.48,
+  "h": 656,
+  "lift": 50.6,
+  "w": 656
+ },
+ "buildings/electronicsPlant-player-l5-damaged.png": {
+  "ax": 362.0,
+  "ay": 419.92,
+  "h": 724,
+  "lift": 80.3,
+  "w": 724
+ },
+ "buildings/electronicsPlant-player-l5.png": {
+  "ax": 362.0,
+  "ay": 419.92,
+  "h": 724,
+  "lift": 80.3,
+  "w": 724
+ },
+ "buildings/farm-player-l1-damaged.png": {
+  "ax": 313.0,
+  "ay": 363.08,
+  "h": 626,
+  "lift": 37.9,
+  "w": 626
+ },
+ "buildings/farm-player-l1.png": {
+  "ax": 313.0,
+  "ay": 363.08,
+  "h": 626,
+  "lift": 37.9,
+  "w": 626
+ },
+ "buildings/farm-player-l2-damaged.png": {
+  "ax": 326.5,
+  "ay": 378.74,
+  "h": 653,
+  "lift": 49.4,
+  "w": 653
+ },
+ "buildings/farm-player-l2.png": {
+  "ax": 326.5,
+  "ay": 378.74,
+  "h": 653,
+  "lift": 49.4,
+  "w": 653
+ },
+ "buildings/farm-player-l3-damaged.png": {
+  "ax": 331.0,
+  "ay": 383.96000000000004,
+  "h": 662,
+  "lift": 53.3,
+  "w": 662
+ },
+ "buildings/farm-player-l3.png": {
+  "ax": 331.0,
+  "ay": 383.96000000000004,
+  "h": 662,
+  "lift": 53.3,
+  "w": 662
+ },
+ "buildings/farm-player-l4-damaged.png": {
+  "ax": 331.0,
+  "ay": 383.96000000000004,
+  "h": 662,
+  "lift": 53.3,
+  "w": 662
+ },
+ "buildings/farm-player-l4.png": {
+  "ax": 331.0,
+  "ay": 383.96000000000004,
+  "h": 662,
+  "lift": 53.3,
+  "w": 662
+ },
+ "buildings/farm-player-l5-damaged.png": {
+  "ax": 359.5,
+  "ay": 417.02000000000004,
+  "h": 719,
+  "lift": 78.4,
+  "w": 719
+ },
+ "buildings/farm-player-l5.png": {
+  "ax": 359.5,
+  "ay": 417.02000000000004,
+  "h": 719,
+  "lift": 78.4,
+  "w": 719
+ },
+ "buildings/granary-player-l1-damaged.png": {
+  "ax": 241.5,
+  "ay": 280.14,
+  "h": 483,
+  "lift": 45.1,
+  "w": 483
+ },
+ "buildings/granary-player-l1.png": {
+  "ax": 241.5,
+  "ay": 280.14,
+  "h": 483,
+  "lift": 45.1,
+  "w": 483
+ },
+ "buildings/granary-player-l2-damaged.png": {
+  "ax": 246.0,
+  "ay": 285.36,
+  "h": 492,
+  "lift": 49.0,
+  "w": 492
+ },
+ "buildings/granary-player-l2.png": {
+  "ax": 246.0,
+  "ay": 285.36,
+  "h": 492,
+  "lift": 49.0,
+  "w": 492
+ },
+ "buildings/granary-player-l3-damaged.png": {
+  "ax": 274.0,
+  "ay": 317.84000000000003,
+  "h": 548,
+  "lift": 73.3,
+  "w": 548
+ },
+ "buildings/granary-player-l3.png": {
+  "ax": 274.0,
+  "ay": 317.84000000000003,
+  "h": 548,
+  "lift": 73.3,
+  "w": 548
+ },
+ "buildings/granary-player-l4-damaged.png": {
+  "ax": 279.5,
+  "ay": 324.22,
+  "h": 559,
+  "lift": 78.0,
+  "w": 559
+ },
+ "buildings/granary-player-l4.png": {
+  "ax": 279.5,
+  "ay": 324.22,
+  "h": 559,
+  "lift": 78.0,
+  "w": 559
+ },
+ "buildings/granary-player-l5-damaged.png": {
+  "ax": 284.5,
+  "ay": 330.02,
+  "h": 569,
+  "lift": 82.7,
+  "w": 569
+ },
+ "buildings/granary-player-l5.png": {
+  "ax": 284.5,
+  "ay": 330.02,
+  "h": 569,
+  "lift": 82.7,
+  "w": 569
+ },
+ "buildings/hall-player-l1-damaged.png": {
+  "ax": 332.5,
+  "ay": 385.7,
+  "h": 665,
+  "lift": 54.9,
+  "w": 665
+ },
+ "buildings/hall-player-l1.png": {
+  "ax": 332.5,
+  "ay": 385.7,
+  "h": 665,
+  "lift": 54.9,
+  "w": 665
+ },
+ "buildings/hall-player-l2-damaged.png": {
+  "ax": 337.5,
+  "ay": 391.5,
+  "h": 675,
+  "lift": 58.8,
+  "w": 675
+ },
+ "buildings/hall-player-l2.png": {
+  "ax": 337.5,
+  "ay": 391.5,
+  "h": 675,
+  "lift": 58.8,
+  "w": 675
+ },
+ "buildings/hall-player-l3-damaged.png": {
+  "ax": 360.0,
+  "ay": 417.6,
+  "h": 720,
+  "lift": 78.4,
+  "w": 720
+ },
+ "buildings/hall-player-l3.png": {
+  "ax": 360.0,
+  "ay": 417.6,
+  "h": 720,
+  "lift": 78.4,
+  "w": 720
+ },
+ "buildings/hall-player-l4-damaged.png": {
+  "ax": 377.0,
+  "ay": 437.32,
+  "h": 754,
+  "lift": 93.3,
+  "w": 754
+ },
+ "buildings/hall-player-l4.png": {
+  "ax": 377.0,
+  "ay": 437.32,
+  "h": 754,
+  "lift": 93.3,
+  "w": 754
+ },
+ "buildings/hall-player-l5-damaged.png": {
+  "ax": 386.0,
+  "ay": 447.76,
+  "h": 772,
+  "lift": 101.1,
+  "w": 772
+ },
+ "buildings/hall-player-l5.png": {
+  "ax": 386.0,
+  "ay": 447.76,
+  "h": 772,
+  "lift": 101.1,
+  "w": 772
+ },
+ "buildings/house-player-l1-damaged.png": {
+  "ax": 224.0,
+  "ay": 259.84000000000003,
+  "h": 448,
+  "lift": 29.7,
+  "w": 448
+ },
+ "buildings/house-player-l1.png": {
+  "ax": 224.0,
+  "ay": 259.84000000000003,
+  "h": 448,
+  "lift": 29.7,
+  "w": 448
+ },
+ "buildings/house-player-l2-damaged.png": {
+  "ax": 224.0,
+  "ay": 259.84000000000003,
+  "h": 448,
+  "lift": 29.6,
+  "w": 448
+ },
+ "buildings/house-player-l2.png": {
+  "ax": 224.0,
+  "ay": 259.84000000000003,
+  "h": 448,
+  "lift": 29.6,
+  "w": 448
+ },
+ "buildings/house-player-l3-damaged.png": {
+  "ax": 224.0,
+  "ay": 259.84000000000003,
+  "h": 448,
+  "lift": 29.7,
+  "w": 448
+ },
+ "buildings/house-player-l3.png": {
+  "ax": 224.0,
+  "ay": 259.84000000000003,
+  "h": 448,
+  "lift": 29.7,
+  "w": 448
+ },
+ "buildings/house-player-l4-damaged.png": {
+  "ax": 245.0,
+  "ay": 284.20000000000005,
+  "h": 490,
+  "lift": 48.1,
+  "w": 490
+ },
+ "buildings/house-player-l4.png": {
+  "ax": 245.0,
+  "ay": 284.20000000000005,
+  "h": 490,
+  "lift": 48.1,
+  "w": 490
+ },
+ "buildings/house-player-l5-damaged.png": {
+  "ax": 271.0,
+  "ay": 314.36,
+  "h": 542,
+  "lift": 70.9,
+  "w": 542
+ },
+ "buildings/house-player-l5.png": {
+  "ax": 271.0,
+  "ay": 314.36,
+  "h": 542,
+  "lift": 70.9,
+  "w": 542
+ },
+ "buildings/hq-enemy-damaged.png": {
+  "ax": 360.5,
+  "ay": 418.18,
+  "h": 721,
+  "lift": 79.2,
+  "w": 721
+ },
+ "buildings/hq-enemy.png": {
+  "ax": 360.5,
+  "ay": 418.18,
+  "h": 721,
+  "lift": 79.2,
+  "w": 721
+ },
+ "buildings/hq-player-damaged.png": {
+  "ax": 360.5,
+  "ay": 418.18,
+  "h": 721,
+  "lift": 79.2,
+  "w": 721
+ },
+ "buildings/hq-player.png": {
+  "ax": 360.5,
+  "ay": 418.18,
+  "h": 721,
+  "lift": 79.2,
+  "w": 721
+ },
+ "buildings/lab-player-l1-damaged.png": {
+  "ax": 240.5,
+  "ay": 278.98,
+  "h": 481,
+  "lift": 44.1,
+  "w": 481
+ },
+ "buildings/lab-player-l1.png": {
+  "ax": 240.5,
+  "ay": 278.98,
+  "h": 481,
+  "lift": 44.1,
+  "w": 481
+ },
+ "buildings/lab-player-l2-damaged.png": {
+  "ax": 240.5,
+  "ay": 278.98,
+  "h": 481,
+  "lift": 44.1,
+  "w": 481
+ },
+ "buildings/lab-player-l2.png": {
+  "ax": 240.5,
+  "ay": 278.98,
+  "h": 481,
+  "lift": 44.1,
+  "w": 481
+ },
+ "buildings/lab-player-l3-damaged.png": {
+  "ax": 240.5,
+  "ay": 278.98,
+  "h": 481,
+  "lift": 44.1,
+  "w": 481
+ },
+ "buildings/lab-player-l3.png": {
+  "ax": 240.5,
+  "ay": 278.98,
+  "h": 481,
+  "lift": 44.1,
+  "w": 481
+ },
+ "buildings/lab-player-l4-damaged.png": {
+  "ax": 254.0,
+  "ay": 294.64,
+  "h": 508,
+  "lift": 55.8,
+  "w": 508
+ },
+ "buildings/lab-player-l4.png": {
+  "ax": 254.0,
+  "ay": 294.64,
+  "h": 508,
+  "lift": 55.8,
+  "w": 508
+ },
+ "buildings/lab-player-l5-damaged.png": {
+  "ax": 258.5,
+  "ay": 299.86,
+  "h": 517,
+  "lift": 59.8,
+  "w": 517
+ },
+ "buildings/lab-player-l5.png": {
+  "ax": 258.5,
+  "ay": 299.86,
+  "h": 517,
+  "lift": 59.8,
+  "w": 517
+ },
+ "buildings/landmine-player-damaged.png": {
+  "ax": 128.0,
+  "ay": 148.48000000000002,
+  "h": 256,
+  "lift": 16.1,
+  "w": 256
+ },
+ "buildings/landmine-player.png": {
+  "ax": 128.0,
+  "ay": 148.48000000000002,
+  "h": 256,
+  "lift": 16.1,
+  "w": 256
+ },
+ "buildings/lumberMill-player-l1-damaged.png": {
+  "ax": 208.0,
+  "ay": 241.28,
+  "h": 416,
+  "lift": 15.7,
+  "w": 416
+ },
+ "buildings/lumberMill-player-l1.png": {
+  "ax": 208.0,
+  "ay": 241.28,
+  "h": 416,
+  "lift": 15.7,
+  "w": 416
+ },
+ "buildings/lumberMill-player-l2-damaged.png": {
+  "ax": 226.5,
+  "ay": 262.74,
+  "h": 453,
+  "lift": 32.0,
+  "w": 453
+ },
+ "buildings/lumberMill-player-l2.png": {
+  "ax": 226.5,
+  "ay": 262.74,
+  "h": 453,
+  "lift": 32.0,
+  "w": 453
+ },
+ "buildings/lumberMill-player-l3-damaged.png": {
+  "ax": 248.0,
+  "ay": 287.68,
+  "h": 496,
+  "lift": 50.9,
+  "w": 496
+ },
+ "buildings/lumberMill-player-l3.png": {
+  "ax": 248.0,
+  "ay": 287.68,
+  "h": 496,
+  "lift": 50.9,
+  "w": 496
+ },
+ "buildings/lumberMill-player-l4-damaged.png": {
+  "ax": 248.0,
+  "ay": 287.68,
+  "h": 496,
+  "lift": 50.9,
+  "w": 496
+ },
+ "buildings/lumberMill-player-l4.png": {
+  "ax": 248.0,
+  "ay": 287.68,
+  "h": 496,
+  "lift": 50.9,
+  "w": 496
+ },
+ "buildings/lumberMill-player-l5-damaged.png": {
+  "ax": 248.0,
+  "ay": 287.68,
+  "h": 496,
+  "lift": 50.9,
+  "w": 496
+ },
+ "buildings/lumberMill-player-l5.png": {
+  "ax": 248.0,
+  "ay": 287.68,
+  "h": 496,
+  "lift": 50.9,
+  "w": 496
+ },
+ "buildings/market-player-l1-damaged.png": {
+  "ax": 211.5,
+  "ay": 245.34,
+  "h": 423,
+  "lift": 19.0,
+  "w": 423
+ },
+ "buildings/market-player-l1.png": {
+  "ax": 211.5,
+  "ay": 245.34,
+  "h": 423,
+  "lift": 19.0,
+  "w": 423
+ },
+ "buildings/market-player-l2-damaged.png": {
+  "ax": 211.5,
+  "ay": 245.34,
+  "h": 423,
+  "lift": 19.0,
+  "w": 423
+ },
+ "buildings/market-player-l2.png": {
+  "ax": 211.5,
+  "ay": 245.34,
+  "h": 423,
+  "lift": 19.0,
+  "w": 423
+ },
+ "buildings/market-player-l3-damaged.png": {
+  "ax": 214.5,
+  "ay": 248.82,
+  "h": 429,
+  "lift": 21.4,
+  "w": 429
+ },
+ "buildings/market-player-l3.png": {
+  "ax": 214.5,
+  "ay": 248.82,
+  "h": 429,
+  "lift": 21.4,
+  "w": 429
+ },
+ "buildings/market-player-l4-damaged.png": {
+  "ax": 234.5,
+  "ay": 272.02,
+  "h": 469,
+  "lift": 39.0,
+  "w": 469
+ },
+ "buildings/market-player-l4.png": {
+  "ax": 234.5,
+  "ay": 272.02,
+  "h": 469,
+  "lift": 39.0,
+  "w": 469
+ },
+ "buildings/market-player-l5-damaged.png": {
+  "ax": 234.5,
+  "ay": 272.02,
+  "h": 469,
+  "lift": 39.0,
+  "w": 469
+ },
+ "buildings/market-player-l5.png": {
+  "ax": 234.5,
+  "ay": 272.02,
+  "h": 469,
+  "lift": 39.0,
+  "w": 469
+ },
+ "buildings/mgTower-enemy-damaged.png": {
+  "ax": 192.0,
+  "ay": 222.72,
+  "h": 384,
+  "lift": 71.5,
+  "w": 384
+ },
+ "buildings/mgTower-enemy.png": {
+  "ax": 192.0,
+  "ay": 222.72,
+  "h": 384,
+  "lift": 71.5,
+  "w": 384
+ },
+ "buildings/mgTower-player-damaged.png": {
+  "ax": 192.0,
+  "ay": 222.72,
+  "h": 384,
+  "lift": 71.5,
+  "w": 384
+ },
+ "buildings/mgTower-player.png": {
+  "ax": 192.0,
+  "ay": 222.72,
+  "h": 384,
+  "lift": 71.5,
+  "w": 384
+ },
+ "buildings/mine-player-l1-damaged.png": {
+  "ax": 249.0,
+  "ay": 288.84000000000003,
+  "h": 498,
+  "lift": 51.7,
+  "w": 498
+ },
+ "buildings/mine-player-l1.png": {
+  "ax": 249.0,
+  "ay": 288.84000000000003,
+  "h": 498,
+  "lift": 51.7,
+  "w": 498
+ },
+ "buildings/mine-player-l2-damaged.png": {
+  "ax": 260.5,
+  "ay": 302.18,
+  "h": 521,
+  "lift": 61.5,
+  "w": 521
+ },
+ "buildings/mine-player-l2.png": {
+  "ax": 260.5,
+  "ay": 302.18,
+  "h": 521,
+  "lift": 61.5,
+  "w": 521
+ },
+ "buildings/mine-player-l3-damaged.png": {
+  "ax": 271.5,
+  "ay": 314.94,
+  "h": 543,
+  "lift": 71.3,
+  "w": 543
+ },
+ "buildings/mine-player-l3.png": {
+  "ax": 271.5,
+  "ay": 314.94,
+  "h": 543,
+  "lift": 71.3,
+  "w": 543
+ },
+ "buildings/mine-player-l4-damaged.png": {
+  "ax": 283.0,
+  "ay": 328.28,
+  "h": 566,
+  "lift": 81.1,
+  "w": 566
+ },
+ "buildings/mine-player-l4.png": {
+  "ax": 283.0,
+  "ay": 328.28,
+  "h": 566,
+  "lift": 81.1,
+  "w": 566
+ },
+ "buildings/mine-player-l5-damaged.png": {
+  "ax": 294.0,
+  "ay": 341.04,
+  "h": 588,
+  "lift": 90.9,
+  "w": 588
+ },
+ "buildings/mine-player-l5.png": {
+  "ax": 294.0,
+  "ay": 341.04,
+  "h": 588,
+  "lift": 90.9,
+  "w": 588
+ },
+ "buildings/mlrs-player-damaged.png": {
+  "ax": 142.5,
+  "ay": 165.3,
+  "h": 285,
+  "lift": 28.5,
+  "w": 285
+ },
+ "buildings/mlrs-player.png": {
+  "ax": 142.5,
+  "ay": 165.3,
+  "h": 285,
+  "lift": 28.5,
+  "w": 285
+ },
+ "buildings/mortar-player-damaged.png": {
+  "ax": 144.0,
+  "ay": 167.04000000000002,
+  "h": 288,
+  "lift": 29.9,
+  "w": 288
+ },
+ "buildings/mortar-player.png": {
+  "ax": 144.0,
+  "ay": 167.04000000000002,
+  "h": 288,
+  "lift": 29.9,
+  "w": 288
+ },
+ "buildings/oilDepot-player-l1-damaged.png": {
+  "ax": 220.0,
+  "ay": 255.20000000000002,
+  "h": 440,
+  "lift": 26.3,
+  "w": 440
+ },
+ "buildings/oilDepot-player-l1.png": {
+  "ax": 220.0,
+  "ay": 255.20000000000002,
+  "h": 440,
+  "lift": 26.3,
+  "w": 440
+ },
+ "buildings/oilDepot-player-l2-damaged.png": {
+  "ax": 222.5,
+  "ay": 258.1,
+  "h": 445,
+  "lift": 28.4,
+  "w": 445
+ },
+ "buildings/oilDepot-player-l2.png": {
+  "ax": 222.5,
+  "ay": 258.1,
+  "h": 445,
+  "lift": 28.4,
+  "w": 445
+ },
+ "buildings/oilDepot-player-l3-damaged.png": {
+  "ax": 225.5,
+  "ay": 261.58000000000004,
+  "h": 451,
+  "lift": 31.3,
+  "w": 451
+ },
+ "buildings/oilDepot-player-l3.png": {
+  "ax": 225.5,
+  "ay": 261.58000000000004,
+  "h": 451,
+  "lift": 31.3,
+  "w": 451
+ },
+ "buildings/oilDepot-player-l4-damaged.png": {
+  "ax": 229.5,
+  "ay": 266.22,
+  "h": 459,
+  "lift": 34.5,
+  "w": 459
+ },
+ "buildings/oilDepot-player-l4.png": {
+  "ax": 229.5,
+  "ay": 266.22,
+  "h": 459,
+  "lift": 34.5,
+  "w": 459
+ },
+ "buildings/oilDepot-player-l5-damaged.png": {
+  "ax": 233.5,
+  "ay": 270.86,
+  "h": 467,
+  "lift": 38.0,
+  "w": 467
+ },
+ "buildings/oilDepot-player-l5.png": {
+  "ax": 233.5,
+  "ay": 270.86,
+  "h": 467,
+  "lift": 38.0,
+  "w": 467
+ },
+ "buildings/oilWell-player-l1-damaged.png": {
+  "ax": 224.0,
+  "ay": 259.84000000000003,
+  "h": 448,
+  "lift": 29.9,
+  "w": 448
+ },
+ "buildings/oilWell-player-l1.png": {
+  "ax": 224.0,
+  "ay": 259.84000000000003,
+  "h": 448,
+  "lift": 29.9,
+  "w": 448
+ },
+ "buildings/oilWell-player-l2-damaged.png": {
+  "ax": 224.0,
+  "ay": 259.84000000000003,
+  "h": 448,
+  "lift": 29.9,
+  "w": 448
+ },
+ "buildings/oilWell-player-l2.png": {
+  "ax": 224.0,
+  "ay": 259.84000000000003,
+  "h": 448,
+  "lift": 29.9,
+  "w": 448
+ },
+ "buildings/oilWell-player-l3-damaged.png": {
+  "ax": 224.0,
+  "ay": 259.84000000000003,
+  "h": 448,
+  "lift": 29.9,
+  "w": 448
+ },
+ "buildings/oilWell-player-l3.png": {
+  "ax": 224.0,
+  "ay": 259.84000000000003,
+  "h": 448,
+  "lift": 29.9,
+  "w": 448
+ },
+ "buildings/oilWell-player-l4-damaged.png": {
+  "ax": 224.0,
+  "ay": 259.84000000000003,
+  "h": 448,
+  "lift": 29.9,
+  "w": 448
+ },
+ "buildings/oilWell-player-l4.png": {
+  "ax": 224.0,
+  "ay": 259.84000000000003,
+  "h": 448,
+  "lift": 29.9,
+  "w": 448
+ },
+ "buildings/oilWell-player-l5-damaged.png": {
+  "ax": 262.0,
+  "ay": 303.92,
+  "h": 524,
+  "lift": 62.8,
+  "w": 524
+ },
+ "buildings/oilWell-player-l5.png": {
+  "ax": 262.0,
+  "ay": 303.92,
+  "h": 524,
+  "lift": 62.8,
+  "w": 524
+ },
+ "buildings/pillbox-enemy-damaged.png": {
+  "ax": 137.0,
+  "ay": 158.92000000000002,
+  "h": 274,
+  "lift": 23.9,
+  "w": 274
+ },
+ "buildings/pillbox-enemy.png": {
+  "ax": 137.0,
+  "ay": 158.92000000000002,
+  "h": 274,
+  "lift": 23.9,
+  "w": 274
+ },
+ "buildings/pillbox-player-damaged.png": {
+  "ax": 137.0,
+  "ay": 158.92000000000002,
+  "h": 274,
+  "lift": 23.9,
+  "w": 274
+ },
+ "buildings/pillbox-player.png": {
+  "ax": 137.0,
+  "ay": 158.92000000000002,
+  "h": 274,
+  "lift": 23.9,
+  "w": 274
+ },
+ "buildings/powerPlant-player-l1-damaged.png": {
+  "ax": 224.5,
+  "ay": 260.42,
+  "h": 449,
+  "lift": 30.4,
+  "w": 449
+ },
+ "buildings/powerPlant-player-l1.png": {
+  "ax": 224.5,
+  "ay": 260.42,
+  "h": 449,
+  "lift": 30.4,
+  "w": 449
+ },
+ "buildings/powerPlant-player-l2-damaged.png": {
+  "ax": 262.0,
+  "ay": 303.92,
+  "h": 524,
+  "lift": 62.7,
+  "w": 524
+ },
+ "buildings/powerPlant-player-l2.png": {
+  "ax": 262.0,
+  "ay": 303.92,
+  "h": 524,
+  "lift": 62.7,
+  "w": 524
+ },
+ "buildings/powerPlant-player-l3-damaged.png": {
+  "ax": 268.5,
+  "ay": 311.46000000000004,
+  "h": 537,
+  "lift": 68.6,
+  "w": 537
+ },
+ "buildings/powerPlant-player-l3.png": {
+  "ax": 268.5,
+  "ay": 311.46000000000004,
+  "h": 537,
+  "lift": 68.6,
+  "w": 537
+ },
+ "buildings/powerPlant-player-l4-damaged.png": {
+  "ax": 275.0,
+  "ay": 319.0,
+  "h": 550,
+  "lift": 74.5,
+  "w": 550
+ },
+ "buildings/powerPlant-player-l4.png": {
+  "ax": 275.0,
+  "ay": 319.0,
+  "h": 550,
+  "lift": 74.5,
+  "w": 550
+ },
+ "buildings/powerPlant-player-l5-damaged.png": {
+  "ax": 282.0,
+  "ay": 327.12,
+  "h": 564,
+  "lift": 80.3,
+  "w": 564
+ },
+ "buildings/powerPlant-player-l5.png": {
+  "ax": 282.0,
+  "ay": 327.12,
+  "h": 564,
+  "lift": 80.3,
+  "w": 564
+ },
+ "buildings/privateEnterprise-player-l1-damaged.png": {
+  "ax": 211.5,
+  "ay": 245.34,
+  "h": 423,
+  "lift": 18.8,
+  "w": 423
+ },
+ "buildings/privateEnterprise-player-l1.png": {
+  "ax": 211.5,
+  "ay": 245.34,
+  "h": 423,
+  "lift": 18.8,
+  "w": 423
+ },
+ "buildings/privateEnterprise-player-l2-damaged.png": {
+  "ax": 214.0,
+  "ay": 248.24,
+  "h": 428,
+  "lift": 21.2,
+  "w": 428
+ },
+ "buildings/privateEnterprise-player-l2.png": {
+  "ax": 214.0,
+  "ay": 248.24,
+  "h": 428,
+  "lift": 21.2,
+  "w": 428
+ },
+ "buildings/privateEnterprise-player-l3-damaged.png": {
+  "ax": 251.0,
+  "ay": 291.15999999999997,
+  "h": 502,
+  "lift": 53.5,
+  "w": 502
+ },
+ "buildings/privateEnterprise-player-l3.png": {
+  "ax": 251.0,
+  "ay": 291.15999999999997,
+  "h": 502,
+  "lift": 53.5,
+  "w": 502
+ },
+ "buildings/privateEnterprise-player-l4-damaged.png": {
+  "ax": 251.0,
+  "ay": 291.15999999999997,
+  "h": 502,
+  "lift": 53.5,
+  "w": 502
+ },
+ "buildings/privateEnterprise-player-l4.png": {
+  "ax": 251.0,
+  "ay": 291.15999999999997,
+  "h": 502,
+  "lift": 53.5,
+  "w": 502
+ },
+ "buildings/privateEnterprise-player-l5-damaged.png": {
+  "ax": 284.5,
+  "ay": 330.02,
+  "h": 569,
+  "lift": 82.5,
+  "w": 569
+ },
+ "buildings/privateEnterprise-player-l5.png": {
+  "ax": 284.5,
+  "ay": 330.02,
+  "h": 569,
+  "lift": 82.5,
+  "w": 569
+ },
+ "buildings/quarry-player-l1-damaged.png": {
+  "ax": 212.0,
+  "ay": 245.92000000000002,
+  "h": 424,
+  "lift": 19.4,
+  "w": 424
+ },
+ "buildings/quarry-player-l1.png": {
+  "ax": 212.0,
+  "ay": 245.92000000000002,
+  "h": 424,
+  "lift": 19.4,
+  "w": 424
+ },
+ "buildings/quarry-player-l2-damaged.png": {
+  "ax": 223.5,
+  "ay": 259.26,
+  "h": 447,
+  "lift": 29.2,
+  "w": 447
+ },
+ "buildings/quarry-player-l2.png": {
+  "ax": 223.5,
+  "ay": 259.26,
+  "h": 447,
+  "lift": 29.2,
+  "w": 447
+ },
+ "buildings/quarry-player-l3-damaged.png": {
+  "ax": 234.5,
+  "ay": 272.02,
+  "h": 469,
+  "lift": 39.0,
+  "w": 469
+ },
+ "buildings/quarry-player-l3.png": {
+  "ax": 234.5,
+  "ay": 272.02,
+  "h": 469,
+  "lift": 39.0,
+  "w": 469
+ },
+ "buildings/quarry-player-l4-damaged.png": {
+  "ax": 256.0,
+  "ay": 296.96000000000004,
+  "h": 512,
+  "lift": 57.7,
+  "w": 512
+ },
+ "buildings/quarry-player-l4.png": {
+  "ax": 256.0,
+  "ay": 296.96000000000004,
+  "h": 512,
+  "lift": 57.7,
+  "w": 512
+ },
+ "buildings/quarry-player-l5-damaged.png": {
+  "ax": 256.0,
+  "ay": 296.96000000000004,
+  "h": 512,
+  "lift": 57.7,
+  "w": 512
+ },
+ "buildings/quarry-player-l5.png": {
+  "ax": 256.0,
+  "ay": 296.96000000000004,
+  "h": 512,
+  "lift": 57.7,
+  "w": 512
+ },
+ "buildings/radar-player-damaged.png": {
+  "ax": 269.0,
+  "ay": 312.04,
+  "h": 538,
+  "lift": 69.1,
+  "w": 538
+ },
+ "buildings/radar-player.png": {
+  "ax": 269.0,
+  "ay": 312.04,
+  "h": 538,
+  "lift": 69.1,
+  "w": 538
+ },
+ "buildings/samSite-player-damaged.png": {
+  "ax": 144.5,
+  "ay": 167.62,
+  "h": 289,
+  "lift": 30.1,
+  "w": 289
+ },
+ "buildings/samSite-player.png": {
+  "ax": 144.5,
+  "ay": 167.62,
+  "h": 289,
+  "lift": 30.1,
+  "w": 289
+ },
+ "buildings/stateEnterprise-player-l1-damaged.png": {
+  "ax": 324.0,
+  "ay": 375.84000000000003,
+  "h": 648,
+  "lift": 47.0,
+  "w": 648
+ },
+ "buildings/stateEnterprise-player-l1.png": {
+  "ax": 324.0,
+  "ay": 375.84000000000003,
+  "h": 648,
+  "lift": 47.0,
+  "w": 648
+ },
+ "buildings/stateEnterprise-player-l2-damaged.png": {
+  "ax": 324.0,
+  "ay": 375.84000000000003,
+  "h": 648,
+  "lift": 47.0,
+  "w": 648
+ },
+ "buildings/stateEnterprise-player-l2.png": {
+  "ax": 324.0,
+  "ay": 375.84000000000003,
+  "h": 648,
+  "lift": 47.0,
+  "w": 648
+ },
+ "buildings/stateEnterprise-player-l3-damaged.png": {
+  "ax": 337.5,
+  "ay": 391.5,
+  "h": 675,
+  "lift": 58.8,
+  "w": 675
+ },
+ "buildings/stateEnterprise-player-l3.png": {
+  "ax": 337.5,
+  "ay": 391.5,
+  "h": 675,
+  "lift": 58.8,
+  "w": 675
+ },
+ "buildings/stateEnterprise-player-l4-damaged.png": {
+  "ax": 337.5,
+  "ay": 391.5,
+  "h": 675,
+  "lift": 58.8,
+  "w": 675
+ },
+ "buildings/stateEnterprise-player-l4.png": {
+  "ax": 337.5,
+  "ay": 391.5,
+  "h": 675,
+  "lift": 58.8,
+  "w": 675
+ },
+ "buildings/stateEnterprise-player-l5-damaged.png": {
+  "ax": 371.5,
+  "ay": 430.94,
+  "h": 743,
+  "lift": 88.6,
+  "w": 743
+ },
+ "buildings/stateEnterprise-player-l5.png": {
+  "ax": 371.5,
+  "ay": 430.94,
+  "h": 743,
+  "lift": 88.6,
+  "w": 743
+ },
+ "buildings/stockExchange-player-l1-damaged.png": {
+  "ax": 319.5,
+  "ay": 370.62,
+  "h": 639,
+  "lift": 43.1,
+  "w": 639
+ },
+ "buildings/stockExchange-player-l1.png": {
+  "ax": 319.5,
+  "ay": 370.62,
+  "h": 639,
+  "lift": 43.1,
+  "w": 639
+ },
+ "buildings/stockExchange-player-l2-damaged.png": {
+  "ax": 319.5,
+  "ay": 370.62,
+  "h": 639,
+  "lift": 43.1,
+  "w": 639
+ },
+ "buildings/stockExchange-player-l2.png": {
+  "ax": 319.5,
+  "ay": 370.62,
+  "h": 639,
+  "lift": 43.1,
+  "w": 639
+ },
+ "buildings/stockExchange-player-l3-damaged.png": {
+  "ax": 319.5,
+  "ay": 370.62,
+  "h": 639,
+  "lift": 43.5,
+  "w": 639
+ },
+ "buildings/stockExchange-player-l3.png": {
+  "ax": 319.5,
+  "ay": 370.62,
+  "h": 639,
+  "lift": 43.5,
+  "w": 639
+ },
+ "buildings/stockExchange-player-l4-damaged.png": {
+  "ax": 349.0,
+  "ay": 404.84000000000003,
+  "h": 698,
+  "lift": 69.0,
+  "w": 698
+ },
+ "buildings/stockExchange-player-l4.png": {
+  "ax": 349.0,
+  "ay": 404.84000000000003,
+  "h": 698,
+  "lift": 69.0,
+  "w": 698
+ },
+ "buildings/stockExchange-player-l5-damaged.png": {
+  "ax": 422.0,
+  "ay": 489.52000000000004,
+  "h": 844,
+  "lift": 132.5,
+  "w": 844
+ },
+ "buildings/stockExchange-player-l5.png": {
+  "ax": 422.0,
+  "ay": 489.52000000000004,
+  "h": 844,
+  "lift": 132.5,
+  "w": 844
+ },
+ "buildings/tankFactory-player-damaged.png": {
+  "ax": 323.5,
+  "ay": 375.26,
+  "h": 647,
+  "lift": 46.9,
+  "w": 647
+ },
+ "buildings/tankFactory-player.png": {
+  "ax": 323.5,
+  "ay": 375.26,
+  "h": 647,
+  "lift": 46.9,
+  "w": 647
+ },
+ "buildings/tankTrap-player-damaged.png": {
+  "ax": 127.0,
+  "ay": 147.32,
+  "h": 254,
+  "lift": 14.9,
+  "w": 254
+ },
+ "buildings/tankTrap-player.png": {
+  "ax": 127.0,
+  "ay": 147.32,
+  "h": 254,
+  "lift": 14.9,
+  "w": 254
+ },
+ "buildings/vault-player-l1-damaged.png": {
+  "ax": 223.0,
+  "ay": 258.68,
+  "h": 446,
+  "lift": 28.8,
+  "w": 446
+ },
+ "buildings/vault-player-l1.png": {
+  "ax": 223.0,
+  "ay": 258.68,
+  "h": 446,
+  "lift": 28.8,
+  "w": 446
+ },
+ "buildings/vault-player-l2-damaged.png": {
+  "ax": 228.0,
+  "ay": 264.48,
+  "h": 456,
+  "lift": 33.5,
+  "w": 456
+ },
+ "buildings/vault-player-l2.png": {
+  "ax": 228.0,
+  "ay": 264.48,
+  "h": 456,
+  "lift": 33.5,
+  "w": 456
+ },
+ "buildings/vault-player-l3-damaged.png": {
+  "ax": 233.5,
+  "ay": 270.86,
+  "h": 467,
+  "lift": 38.2,
+  "w": 467
+ },
+ "buildings/vault-player-l3.png": {
+  "ax": 233.5,
+  "ay": 270.86,
+  "h": 467,
+  "lift": 38.2,
+  "w": 467
+ },
+ "buildings/vault-player-l4-damaged.png": {
+  "ax": 239.0,
+  "ay": 277.24,
+  "h": 478,
+  "lift": 42.9,
+  "w": 478
+ },
+ "buildings/vault-player-l4.png": {
+  "ax": 239.0,
+  "ay": 277.24,
+  "h": 478,
+  "lift": 42.9,
+  "w": 478
+ },
+ "buildings/vault-player-l5-damaged.png": {
+  "ax": 259.5,
+  "ay": 301.02,
+  "h": 519,
+  "lift": 60.6,
+  "w": 519
+ },
+ "buildings/vault-player-l5.png": {
+  "ax": 259.5,
+  "ay": 301.02,
+  "h": 519,
+  "lift": 60.6,
+  "w": 519
+ },
+ "buildings/warehouse-player-l1-damaged.png": {
+  "ax": 220.5,
+  "ay": 255.78,
+  "h": 441,
+  "lift": 27.0,
+  "w": 441
+ },
+ "buildings/warehouse-player-l1.png": {
+  "ax": 220.5,
+  "ay": 255.78,
+  "h": 441,
+  "lift": 27.0,
+  "w": 441
+ },
+ "buildings/warehouse-player-l2-damaged.png": {
+  "ax": 223.0,
+  "ay": 258.68,
+  "h": 446,
+  "lift": 28.9,
+  "w": 446
+ },
+ "buildings/warehouse-player-l2.png": {
+  "ax": 223.0,
+  "ay": 258.68,
+  "h": 446,
+  "lift": 28.9,
+  "w": 446
+ },
+ "buildings/warehouse-player-l3-damaged.png": {
+  "ax": 225.0,
+  "ay": 261.0,
+  "h": 450,
+  "lift": 30.9,
+  "w": 450
+ },
+ "buildings/warehouse-player-l3.png": {
+  "ax": 225.0,
+  "ay": 261.0,
+  "h": 450,
+  "lift": 30.9,
+  "w": 450
+ },
+ "buildings/warehouse-player-l4-damaged.png": {
+  "ax": 227.5,
+  "ay": 263.9,
+  "h": 455,
+  "lift": 32.9,
+  "w": 455
+ },
+ "buildings/warehouse-player-l4.png": {
+  "ax": 227.5,
+  "ay": 263.9,
+  "h": 455,
+  "lift": 32.9,
+  "w": 455
+ },
+ "buildings/warehouse-player-l5-damaged.png": {
+  "ax": 234.0,
+  "ay": 271.44,
+  "h": 468,
+  "lift": 38.4,
+  "w": 468
+ },
+ "buildings/warehouse-player-l5.png": {
+  "ax": 234.0,
+  "ay": 271.44,
+  "h": 468,
+  "lift": 38.4,
+  "w": 468
+ },
+ "fx/explosion-0.png": {
+  "ax": 128.0,
+  "ay": 158.72,
+  "h": 256,
+  "w": 256
+ },
+ "fx/explosion-1.png": {
+  "ax": 128.0,
+  "ay": 158.72,
+  "h": 256,
+  "w": 256
+ },
+ "fx/explosion-2.png": {
+  "ax": 128.0,
+  "ay": 158.72,
+  "h": 256,
+  "w": 256
+ },
+ "fx/explosion-3.png": {
+  "ax": 128.0,
+  "ay": 158.72,
+  "h": 256,
+  "w": 256
+ },
+ "fx/explosion-4.png": {
+  "ax": 128.0,
+  "ay": 158.72,
+  "h": 256,
+  "w": 256
+ },
+ "fx/explosion-5.png": {
+  "ax": 128.0,
+  "ay": 158.72,
+  "h": 256,
+  "w": 256
+ },
+ "fx/explosion-6.png": {
+  "ax": 128.0,
+  "ay": 158.72,
+  "h": 256,
+  "w": 256
+ },
+ "fx/explosion-7.png": {
+  "ax": 128.0,
+  "ay": 158.72,
+  "h": 256,
+  "w": 256
+ },
+ "fx/fire-0.png": {
+  "ax": 96.0,
+  "ay": 153.6,
+  "h": 192,
+  "w": 192
+ },
+ "fx/fire-1.png": {
+  "ax": 96.0,
+  "ay": 153.6,
+  "h": 192,
+  "w": 192
+ },
+ "fx/fire-2.png": {
+  "ax": 96.0,
+  "ay": 153.6,
+  "h": 192,
+  "w": 192
+ },
+ "fx/fire-3.png": {
+  "ax": 96.0,
+  "ay": 153.6,
+  "h": 192,
+  "w": 192
+ },
+ "fx/fire-4.png": {
+  "ax": 96.0,
+  "ay": 153.6,
+  "h": 192,
+  "w": 192
+ },
+ "fx/fire-5.png": {
+  "ax": 96.0,
+  "ay": 153.6,
+  "h": 192,
+  "w": 192
+ },
+ "fx/fire-6.png": {
+  "ax": 96.0,
+  "ay": 153.6,
+  "h": 192,
+  "w": 192
+ },
+ "fx/fire-7.png": {
+  "ax": 96.0,
+  "ay": 153.6,
+  "h": 192,
+  "w": 192
+ },
+ "fx/flash.png": {
+  "ax": 32.0,
+  "ay": 32.0,
+  "h": 64,
+  "w": 64
+ },
+ "fx/smoke-0.png": {
+  "ax": 128.0,
+  "ay": 166.4,
+  "h": 256,
+  "w": 256
+ },
+ "fx/smoke-1.png": {
+  "ax": 128.0,
+  "ay": 166.4,
+  "h": 256,
+  "w": 256
+ },
+ "fx/smoke-2.png": {
+  "ax": 128.0,
+  "ay": 166.4,
+  "h": 256,
+  "w": 256
+ },
+ "fx/smoke-3.png": {
+  "ax": 128.0,
+  "ay": 166.4,
+  "h": 256,
+  "w": 256
+ },
+ "fx/smoke-4.png": {
+  "ax": 128.0,
+  "ay": 166.4,
+  "h": 256,
+  "w": 256
+ },
+ "fx/smoke-5.png": {
+  "ax": 128.0,
+  "ay": 166.4,
+  "h": 256,
+  "w": 256
+ },
+ "fx/smoke-6.png": {
+  "ax": 128.0,
+  "ay": 166.4,
+  "h": 256,
+  "w": 256
+ },
+ "fx/smoke-7.png": {
+  "ax": 128.0,
+  "ay": 166.4,
+  "h": 256,
+  "w": 256
  },
  "ground/forest-00.png": {
   "ax": 256.0,
@@ -280,6 +2420,146 @@
   "ay": 128.0,
   "h": 256,
   "w": 512
+ },
+ "icons/res-ammo.png": {
+  "ax": 64.0,
+  "ay": 64.0,
+  "h": 128,
+  "w": 128
+ },
+ "icons/res-electronics.png": {
+  "ax": 64.0,
+  "ay": 64.0,
+  "h": 128,
+  "w": 128
+ },
+ "icons/res-food.png": {
+  "ax": 64.0,
+  "ay": 64.0,
+  "h": 128,
+  "w": 128
+ },
+ "icons/res-fuel.png": {
+  "ax": 64.0,
+  "ay": 64.0,
+  "h": 128,
+  "w": 128
+ },
+ "icons/res-gold.png": {
+  "ax": 64.0,
+  "ay": 64.0,
+  "h": 128,
+  "w": 128
+ },
+ "icons/res-steel.png": {
+  "ax": 64.0,
+  "ay": 64.0,
+  "h": 128,
+  "w": 128
+ },
+ "icons/res-stone.png": {
+  "ax": 64.0,
+  "ay": 64.0,
+  "h": 128,
+  "w": 128
+ },
+ "icons/res-wood.png": {
+  "ax": 64.0,
+  "ay": 64.0,
+  "h": 128,
+  "w": 128
+ },
+ "props/rocks-0.png": {
+  "ax": 234.5,
+  "ay": 272.02,
+  "h": 469,
+  "lift": 39.0,
+  "w": 469
+ },
+ "props/rocks-1.png": {
+  "ax": 227.0,
+  "ay": 263.32,
+  "h": 454,
+  "lift": 32.6,
+  "w": 454
+ },
+ "props/rocks-2.png": {
+  "ax": 223.5,
+  "ay": 259.26,
+  "h": 447,
+  "lift": 29.4,
+  "w": 447
+ },
+ "props/rocks-3.png": {
+  "ax": 234.5,
+  "ay": 272.02,
+  "h": 469,
+  "lift": 39.1,
+  "w": 469
+ },
+ "props/trees-0.png": {
+  "ax": 260.0,
+  "ay": 301.6,
+  "h": 520,
+  "lift": 61.1,
+  "w": 520
+ },
+ "props/trees-1.png": {
+  "ax": 257.0,
+  "ay": 298.12,
+  "h": 514,
+  "lift": 58.4,
+  "w": 514
+ },
+ "props/trees-2.png": {
+  "ax": 258.5,
+  "ay": 299.86,
+  "h": 517,
+  "lift": 59.9,
+  "w": 517
+ },
+ "props/trees-3.png": {
+  "ax": 246.5,
+  "ay": 285.94,
+  "h": 493,
+  "lift": 49.6,
+  "w": 493
+ },
+ "ruins/s1-0.png": {
+  "ax": 130.0,
+  "ay": 150.8,
+  "h": 260,
+  "w": 260
+ },
+ "ruins/s1-1.png": {
+  "ax": 131.0,
+  "ay": 151.96,
+  "h": 262,
+  "w": 262
+ },
+ "ruins/s2-0.png": {
+  "ax": 223.0,
+  "ay": 258.68,
+  "h": 446,
+  "w": 446
+ },
+ "ruins/s2-1.png": {
+  "ax": 221.0,
+  "ay": 256.36,
+  "h": 442,
+  "w": 442
+ },
+ "ruins/s3-0.png": {
+  "ax": 311.5,
+  "ay": 361.34000000000003,
+  "h": 623,
+  "w": 623
+ },
+ "ruins/s3-1.png": {
+  "ax": 313.5,
+  "ay": 363.66,
+  "h": 627,
+  "w": 627
  },
  "units/bomber1-enemy-00.png": {
   "ax": 200.0,
@@ -2009,6 +4289,198 @@
   "h": 240,
   "w": 240
  },
+ "units/mg-enemy-00.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-01.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-02.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-03.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-04.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-05.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-06.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-07.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-08.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-09.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-10.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-11.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-12.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-13.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-14.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-enemy-15.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-00.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-01.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-02.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-03.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-04.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-05.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-06.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-07.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-08.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-09.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-10.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-11.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-12.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-13.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-14.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/mg-player-15.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
  "units/rifle-enemy-00.png": {
   "ax": 56.0,
   "ay": 69.44,
@@ -2196,6 +4668,582 @@
   "w": 112
  },
  "units/rifle-player-15.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-00.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-01.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-02.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-03.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-04.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-05.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-06.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-07.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-08.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-09.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-10.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-11.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-12.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-13.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-14.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-enemy-15.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-00.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-01.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-02.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-03.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-04.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-05.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-06.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-07.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-08.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-09.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-10.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-11.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-12.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-13.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-14.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sapper-player-15.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-00.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-01.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-02.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-03.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-04.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-05.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-06.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-07.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-08.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-09.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-10.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-11.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-12.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-13.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-14.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-enemy-15.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-00.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-01.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-02.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-03.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-04.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-05.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-06.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-07.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-08.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-09.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-10.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-11.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-12.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-13.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-14.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/smg-player-15.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-00.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-01.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-02.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-03.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-04.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-05.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-06.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-07.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-08.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-09.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-10.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-11.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-12.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-13.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-14.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-enemy-15.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-00.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-01.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-02.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-03.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-04.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-05.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-06.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-07.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-08.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-09.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-10.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-11.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-12.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-13.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-14.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/sniper-player-15.png": {
   "ax": 56.0,
   "ay": 69.44,
   "h": 112,

@@ -50,7 +50,7 @@ export function strongholdName(id: number): string {
 }
 
 // 民用建筑的外观（对应基地建筑）
-export const AI_CIVIL_SKINS = ['house', 'market', 'warehouse', 'granary', 'vault', 'steelMill', 'arsenal', 'powerPlant'] as const;
+export const AI_CIVIL_SKINS = ['house', 'market', 'warehouse', 'granary', 'vault', 'oilDepot', 'arsenal', 'powerPlant'] as const;
 
 // 每小时产量；仓库容量 = 产量 × 24（一天的量）
 export function aiRates(level: number): Record<ResourceId, number> {
@@ -59,9 +59,9 @@ export function aiRates(level: number): Record<ResourceId, number> {
   r.food = 60 * level;
   r.wood = 50 * level;
   r.stone = 40 * level;
-  r.iron = 25 * level;
-  if (level >= 2) { r.steel = 12 * level; r.ammo = 8 * level; }
-  if (level >= 3) { r.oil = 15 * level; r.fuel = 10 * level; }
+  r.steel = 12 * level;
+  if (level >= 2) r.ammo = 8 * level;
+  if (level >= 3) r.fuel = 15 * level;
   if (level >= 4) r.electronics = 3 * level;
   return r;
 }

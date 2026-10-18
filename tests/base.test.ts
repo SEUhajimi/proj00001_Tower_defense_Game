@@ -105,24 +105,26 @@ describe('生产', () => {
     expect(b.state.res.wood).toBe(HALL_STORAGE.wood);
   });
 
-  it('两层生产链：矿井 50 铁/时 → 炼钢厂吃 40 铁出 20 钢', () => {
+  it('矿井直接产钢铁 30/时，油井直接产燃油 35/时', () => {
     const b = rich();
     b.buyPlot(IRON_PLOT);
     expect(typeof b.build('mine', IRON.x, IRON.y)).toBe('object');
-    expect(typeof b.build('steelMill', PLAIN.x, PLAIN.y)).toBe('object');
-    const steel = b.state.res.steel, iron = b.state.res.iron;
+    expect(typeof b.build('oilWell', PLAIN.x, PLAIN.y)).toBe('object');
+    const steel = b.state.res.steel, fuel = b.state.res.fuel;
     hours(b, 1);
-    expect(b.state.res.steel - steel).toBeCloseTo(20, 3);
-    expect(b.state.res.iron - iron).toBeCloseTo(10, 3);
+    expect(b.state.res.steel - steel).toBeCloseTo(30, 3);
+    expect(b.state.res.fuel - fuel).toBeCloseTo(35, 3);
   });
 
   it('没有原料，加工厂不产出', () => {
     const b = rich();
-    b.state.res.iron = 0;
-    b.build('steelMill', PLAIN.x, PLAIN.y);
-    const steel = b.state.res.steel;
+    expect(typeof b.build('arsenal', PLAIN.x, PLAIN.y)).toBe('object');
+    b.state.res.steel = 0;
+    b.state.res.fuel = 0;
+    b.state.res.ammo = 100; // 低于仓库上限，产出的话看得出来
+    const ammo = b.state.res.ammo;
     hours(b, 1);
-    expect(b.state.res.steel).toBe(steel);
+    expect(b.state.res.ammo).toBe(ammo);
   });
 
   it('电力不足时耗电建筑按比例减产', () => {

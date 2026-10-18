@@ -12,6 +12,7 @@ import RENDERED from '../../public/assets/rendered/manifest.json';
 // 场景代码只管按名字取图。贴图按 ART_SCALE 倍分辨率生成，显示时缩小，镜头拉近也清晰。
 
 export const ART_SCALE = 2;
+export const PARKED_SCALE = 0.6; // 停在机场上的飞机画小一些（机位挤），起飞爬升时慢慢变回原大
 const ROOT = 'assets/kenney/';
 
 // 基地建筑用哪张图：建筑图（b 开头）、地块图（l）或塔防包里的岩石树木（details）
@@ -19,7 +20,7 @@ const BUILDING_ART: Record<string, string> = {
   hall: 'buildings/b106', house: 'buildings/b037', market: 'buildings/b113', farm: 'land/l083',
   powerPlant: 'buildings/b101', granary: 'buildings/b021', vault: 'buildings/b099', lab: 'buildings/b116',
   lumberMill: 'buildings/b014', quarry: 'details/rocks_5', mine: 'details/rocks_2', oilWell: 'buildings/b085',
-  steelMill: 'buildings/b046', refinery: 'buildings/b093', arsenal: 'buildings/b009', electronicsPlant: 'buildings/b124',
+  arsenal: 'buildings/b009', electronicsPlant: 'buildings/b124',
   warehouse: 'buildings/b040', oilDepot: 'buildings/b108', ammoDepot: 'buildings/b010',
   barracks: 'buildings/b122', tankFactory: 'buildings/b125', airfield: 'buildings/b114',
 };
@@ -62,15 +63,53 @@ const FILES = [
 
 const key = (file: string) => `k-${file}`;
 
-// 直接拿原图用的：爆炸逐帧动画，森林和山地上的树、石头
-export const FX_EXPLOSION = [1, 2, 3, 4, 5].map(i => key(`fx/explosion${i}`));
-export const FX_SMOKE = [1, 2, 3, 4, 5].map(i => key(`fx/explosionSmoke${i}`));
-export const TREE_KEYS = TREES.map(key);
-export const ROCK_KEYS = ROCKS.map(key);
+// 特效逐帧图：爆炸、烟团、火焰（循环）。有渲染图就用渲染图（rendered 为 true，锚点是地面上的爆炸点），
+// 否则用 Kenney 的爆炸图（只有爆炸和烟，没有火焰）
+export interface FxFrames { keys: string[]; rendered: boolean }
+
+export function fxFrames(kind: 'explosion' | 'smoke' | 'fire'): FxFrames | null {
+  const paths = Object.keys(rendered).filter(p => p.startsWith(`fx/${kind}-`)).sort();
+  if (paths.length) {
+    for (const p of paths) useRendered(p, rkey(p));
+    return { keys: paths.map(rkey), rendered: true };
+  }
+  if (kind === 'fire') return null;
+  return { keys: [1, 2, 3, 4, 5].map(i => key(`fx/${kind === 'explosion' ? 'explosion' : 'explosionSmoke'}${i}`)), rendered: false };
+}
+
+// 枪口火光（一张），没渲染的返回 null
+export function flashKey(): string | null {
+  if (!has('fx/flash.png')) return null;
+  useRendered('fx/flash.png', rkey('fx/flash.png'));
+  return rkey('fx/flash.png');
+}
+
+// 建筑被摧毁后的瓦砾堆：按占地大小（1–3 格）挑一张，n 用来在几张里轮换。没渲染的返回 null
+export function ruinKey(size: number, n: number): string | null {
+  const s = Math.max(1, Math.min(3, size));
+  const paths = Object.keys(rendered).filter(p => p.startsWith(`ruins/s${s}-`)).sort();
+  if (!paths.length) return null;
+  const path = paths[n % paths.length];
+  useRendered(path, rkey(path));
+  return rkey(path);
+}
+
+// 基地建筑的贴图名。能升级的建筑每级一张：bb-house-l3；机场还分朝向：bb-airfield-r1-l3。
+// 没渲染那一级的用 bb-<建筑名>
+export function buildingKey(b: { defId: BaseBuildingId; rot?: number; level?: number }): string {
+  const k = b.defId === 'airfield' ? `bb-airfield-r${b.rot ?? 0}-l${b.level ?? 1}` : `bb-${b.defId}-l${b.level ?? 1}`;
+  return scaleOf.has(k) ? k : `bb-${b.defId}`;
+}
+
+// 建筑受损的样子（血量一半以下换这张）：贴图名后面加 -damaged，没有的返回 null
+export function damagedKey(texKey: string): string | null {
+  return scaleOf.has(`${texKey}-damaged`) ? `${texKey}-damaged` : null;
+}
 
 // ---------- Blender 渲染图 ----------
 
-interface RenderInfo { w: number; h: number; ax: number; ay: number }
+// lift：建筑最高点比占地中心高多少像素（显示像素），放血条、驻防人数用
+interface RenderInfo { w: number; h: number; ax: number; ay: number; lift?: number }
 const rendered = RENDERED as Record<string, RenderInfo>;
 const rkey = (path: string) => `r-${path.replace(/\.png$/, '')}`;
 const has = (path: string) => path in rendered;
@@ -91,6 +130,7 @@ function useRendered(path: string, as: string): void {
     }
     scaleOf.set(as, 1 / ART_SCALE);
     anchorOf.set(as, { x: info.ax / info.w, y: info.ay / info.h });
+    if (info.lift !== undefined) liftOf.set(as, info.lift);
   }
 }
 
@@ -118,6 +158,17 @@ export function unitFrames(defId: DefId, side: Side): string[] | null {
     useRendered(path, rkey(path));
     return rkey(path);
   });
+}
+
+// 森林的树丛、山地和战场的石堆（一张占 2×2 格，锚点是这 2×2 格的中心）。
+// rendered 为 false 时是 Kenney 的图：底边中点对位，按宽度缩放
+export function propKeys(kind: 'trees' | 'rocks'): { keys: string[]; rendered: boolean } {
+  const paths = Object.keys(rendered).filter(p => p.startsWith(`props/${kind}-`)).sort();
+  if (paths.length) {
+    for (const p of paths) useRendered(p, rkey(p));
+    return { keys: paths.map(rkey), rendered: true };
+  }
+  return { keys: (kind === 'trees' ? TREES : ROCKS).map(key), rendered: false };
 }
 
 // 朝向角 → 第几张
@@ -203,8 +254,24 @@ export function buildArt(scene: Phaser.Scene): void {
   sceneRef = scene;
   const BASE_INSET = 0.86;
   // 基地建筑（基地场景，以及战斗里的民用建筑、演习里自己的建筑）；有渲染图的用渲染图
+  // 能升级的建筑每级一张，机场每个朝向、等级一张（见 buildingKey）
+  for (const path of Object.keys(rendered)) {
+    const m = /^buildings\/(\w+)-player-((?:r\d-)?l\d)(-damaged)?\.png$/.exec(path);
+    if (m) useRendered(path, `bb-${m[1]}-${m[2]}${m[3] ?? ''}`);
+  }
   for (const id of Object.keys(BASE_BUILDINGS) as BaseBuildingId[]) {
-    if (has(`buildings/${id}-player.png`)) { useRendered(`buildings/${id}-player.png`, `bb-${id}`); continue; }
+    // 只有分级图的建筑：bb-<建筑名> 用 1 级的（建造菜单、敌方据点里的民用建筑默认用它）
+    const l1 = `buildings/${id}-player-l1.png`;
+    if (has(l1)) {
+      useRendered(l1, `bb-${id}`);
+      if (has(`buildings/${id}-player-l1-damaged.png`)) useRendered(`buildings/${id}-player-l1-damaged.png`, `bb-${id}-damaged`);
+      continue;
+    }
+    if (has(`buildings/${id}-player.png`)) {
+      useRendered(`buildings/${id}-player.png`, `bb-${id}`);
+      if (has(`buildings/${id}-player-damaged.png`)) useRendered(`buildings/${id}-player-damaged.png`, `bb-${id}-damaged`);
+      continue;
+    }
     const w = TILE_W * baseDef(id).size * BASE_INSET;
     const tower = TOWER_ART[id as DefId];
     if (tower) stack(scene, `bb-${id}`, tower, w);
@@ -213,11 +280,19 @@ export function buildArt(scene: Phaser.Scene): void {
   const sides: Side[] = ['player', 'enemy'];
   for (const side of sides) {
     const tint = side === 'enemy' ? ENEMY_TINT : undefined;
-    for (const [id, files] of Object.entries(TOWER_ART) as [DefId, string[]][]) {
-      stack(scene, `${id}-${side}`, files, TILE_W * DEFS[id].size * 0.8, tint);
+    // 战场上的塔、工事、指挥部、民用建筑：有分阵营的渲染图就用
+    for (const id of Object.keys(DEFS) as DefId[]) {
+      const path = `buildings/${id}-${side}.png`;
+      if (DEFS[id].size > 0 && has(path)) useRendered(path, `${id}-${side}`);
+      const hurt = `buildings/${id}-${side}-damaged.png`;
+      if (DEFS[id].size > 0 && has(hurt)) useRendered(hurt, `${id}-${side}-damaged`);
     }
-    isoBlock(scene, `hq-${side}`, BUILDING_ART.hall, TILE_W * DEFS.hq.size * 0.8, tint);
+    for (const [id, files] of Object.entries(TOWER_ART) as [DefId, string[]][]) {
+      if (!scene.textures.exists(`${id}-${side}`)) stack(scene, `${id}-${side}`, files, TILE_W * DEFS[id].size * 0.8, tint);
+    }
+    if (!scene.textures.exists(`hq-${side}`)) isoBlock(scene, `hq-${side}`, BUILDING_ART.hall, TILE_W * DEFS.hq.size * 0.8, tint);
     for (const [id, file] of Object.entries(SOLDIER_ART) as [DefId, string][]) {
+      if (has(`units/${id}-${side}-00.png`)) continue; // 有渲染图（16 个朝向）就不用拼
       // 士兵图朝右，显示宽约 22 像素
       const im = img(scene, `soldiers/${file}`), k = (22 * ART_SCALE) / im.width;
       canvasTexture(scene, `${id}-${side}`, im.width * k, im.height * k, ctx => ctx.drawImage(im, 0, 0, im.width * k, im.height * k), tint);

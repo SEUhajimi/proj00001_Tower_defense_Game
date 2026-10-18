@@ -1,7 +1,7 @@
 import { LOOT_SHARE } from '../../data/ai';
-import { factoryOf, REPAIR_RATE, START_ARMY, TRAINING } from '../../data/army';
+import { factoryOf, hangarNeed, REPAIR_RATE, START_ARMY, TRAINING } from '../../data/army';
 import {
-  baseDef, BASE_BUILDINGS, HALL_STORAGE, RESOURCE_NAME, RESOURCES, START_POP, START_RESOURCES, START_TAX,
+  baseDef, BASE_BUILDINGS, footprint, HALL_STORAGE, RESOURCE_NAME, RESOURCES, START_POP, START_RESOURCES, START_TAX,
   buildLimit, MAX_LEVEL, upgradable, upgradeCost, type Amounts, type BaseBuildingId, type ResourceId, type Terrain,
 } from '../../data/economy';
 import { START_TECH, TECH_REQUIRES, TECH_STAGES, techStage } from '../../data/tech';
@@ -16,9 +16,11 @@ export interface PlacedBuilding {
   x: number; // 占地左上角格子
   y: number;
   level?: number; // 没有就是 1 级
+  rot?: 0 | 1; // 长方形建筑（机场）转了 90°，见 footprint
 }
 
 export const levelOf = (b: PlacedBuilding) => b.level ?? 1;
+export const footprintOf = (b: PlacedBuilding) => footprint(b.defId, b.rot ?? 0);
 
 // 带伤回来的部队，修好之前不能出击
 export interface Wounded {
@@ -28,7 +30,7 @@ export interface Wounded {
 
 // 存档里保存的全部内容（地形和 AI 基地布局由种子重新生成，不存）
 export interface BaseState {
-  version: 5;
+  version: 7;
   seed: number;
   lastTick: number; // 上次结算到的时间戳（毫秒）
   owned: number[]; // 已拥有的地块编号
@@ -53,7 +55,7 @@ export function newBaseState(seed: number, now: number): BaseState {
   }
   const mid = Math.floor((START_PLOT.x0 + START_PLOT.size / 2) * PLOT_SIZE) - 1; // 市政厅（3×3）放在领地正中
   return {
-    version: 5, seed, lastTick: now, owned, plotsBought: 0,
+    version: 7, seed, lastTick: now, owned, plotsBought: 0,
     // 开局：市政厅居中，正上方一座兵营
     buildings: [{ uid: 1, defId: 'hall', x: mid, y: mid }, { uid: 2, defId: 'barracks', x: mid, y: mid - 4 }],
     nextUid: 3,
@@ -127,9 +129,9 @@ export class Base {
   }
 
   private stamp(b: PlacedBuilding, value: number): void {
-    const size = baseDef(b.defId).size;
-    for (let y = b.y; y < b.y + size; y++) {
-      for (let x = b.x; x < b.x + size; x++) this.occ[y * REGION_TILES + x] = value;
+    const { w, h } = footprintOf(b);
+    for (let y = b.y; y < b.y + h; y++) {
+      for (let x = b.x; x < b.x + w; x++) this.occ[y * REGION_TILES + x] = value;
     }
   }
 
@@ -272,6 +274,8 @@ export class Base {
     if (!this.researched(defId)) return '尚未研发';
     const factory = factoryOf(defId);
     if (!this.count(factory)) return `需要先建造${baseDef(factory).name}`;
+    const need = hangarNeed(defId) * n;
+    if (need && this.hangarUsed() + need > this.hangarCap()) return '机库不够，到机场扩建机库（升级机场）';
     const cost: Amounts = {};
     for (const r of RESOURCES) if (t.cost[r]) cost[r] = t.cost[r]! * n;
     const money = this.canAfford(cost);
@@ -288,6 +292,18 @@ export class Base {
     this.state.pop -= t.pop * n;
     this.state.army[defId] = (this.state.army[defId] ?? 0) + n;
     return true;
+  }
+
+  // 机库：所有机场加起来有几个，已经停了几个（含在修的伤员飞机）
+  hangarCap(): number {
+    return this.state.buildings.reduce((n, b) => n + (baseDef(b.defId).hangars ?? 0) * levelOf(b), 0);
+  }
+
+  hangarUsed(): number {
+    let n = 0;
+    for (const [id, c] of Object.entries(this.state.army) as [DefId, number][]) n += hangarNeed(id) * c;
+    for (const w of this.state.wounded) n += hangarNeed(w.defId);
+    return n;
   }
 
   // 部队在基地里移动到新位置
@@ -345,10 +361,10 @@ export class Base {
   // ---------- 建造 ----------
 
   // 占地是否可用：都在自己领地上、没有别的建筑（exceptUid 用于移动时忽略自己）
-  fits(defId: BaseBuildingId, tx: number, ty: number, exceptUid = -1): true | string {
-    const def = baseDef(defId);
-    for (let y = ty; y < ty + def.size; y++) {
-      for (let x = tx; x < tx + def.size; x++) {
+  fits(defId: BaseBuildingId, tx: number, ty: number, exceptUid = -1, rot = 0): true | string {
+    const { w, h } = footprint(defId, rot);
+    for (let y = ty; y < ty + h; y++) {
+      for (let x = tx; x < tx + w; x++) {
         if (!this.ownsTile(x, y)) return '只能建在自己的领地上';
         const uid = this.occ[y * REGION_TILES + x];
         if (uid !== -1 && uid !== exceptUid) return '这里已有建筑';
@@ -367,35 +383,39 @@ export class Base {
     return buildLimit(defId, this.hallLevel());
   }
 
-  canBuild(defId: BaseBuildingId, tx: number, ty: number): true | string {
+  canBuild(defId: BaseBuildingId, tx: number, ty: number, rot: 0 | 1 = 0): true | string {
     const def = baseDef(defId);
     if (def.unique) return '不能再建';
     if (defId in DEFS && !this.researched(defId as DefId)) return '尚未研发';
     if (this.count(defId) >= this.limit(defId)) return `已达上限 ${this.limit(defId)} 座，升级市政厅可以多建`;
-    const fit = this.fits(defId, tx, ty);
+    const fit = this.fits(defId, tx, ty, -1, rot);
     if (fit !== true) return fit;
     return this.canAfford(def.cost);
   }
 
-  build(defId: BaseBuildingId, tx: number, ty: number): PlacedBuilding | string {
-    const ok = this.canBuild(defId, tx, ty);
+  build(defId: BaseBuildingId, tx: number, ty: number, rot: 0 | 1 = 0): PlacedBuilding | string {
+    const ok = this.canBuild(defId, tx, ty, rot);
     if (ok !== true) return ok;
     this.pay(baseDef(defId).cost);
     const b: PlacedBuilding = { uid: this.state.nextUid++, defId, x: tx, y: ty };
+    if (rot && baseDef(defId).rect) b.rot = 1;
     this.state.buildings.push(b);
     this.stamp(b, b.uid);
     return b;
   }
 
-  // 基地管理：免费、即时移动，地形限制照旧
-  move(uid: number, tx: number, ty: number): true | string {
+  // 基地管理：免费、即时移动，地形限制照旧。rot 不给就保持原来的朝向
+  move(uid: number, tx: number, ty: number, rot?: 0 | 1): true | string {
     const b = this.state.buildings.find(o => o.uid === uid);
     if (!b) return '没有这座建筑';
-    const fit = this.fits(b.defId, tx, ty, uid);
+    const r = baseDef(b.defId).rect ? (rot ?? b.rot ?? 0) : 0;
+    const fit = this.fits(b.defId, tx, ty, uid, r);
     if (fit !== true) return fit;
     this.stamp(b, -1);
     b.x = tx;
     b.y = ty;
+    if (r) b.rot = 1;
+    else delete b.rot;
     this.stamp(b, uid);
     return true;
   }

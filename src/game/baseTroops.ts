@@ -4,13 +4,13 @@ import { baseDef } from '../../shared/data/economy';
 import { DEFS, type DefId } from '../../shared/data/units';
 import type { Base } from '../../shared/sim/base/base';
 import { troopLayout } from '../../shared/sim/base/troops';
-import { dirIndex, texAnchor, texScale, unitFrames } from './art';
+import { dirIndex, PARKED_SCALE, texAnchor, texScale, unitFrames } from './art';
 import { toScreen } from './iso';
 import { act } from './session';
 import { makeTextures, textureKey } from './textures';
 
 // 基地里的部队：按 troopLayout 画出来，新兵从出厂建筑门口跑到自己的位置。
-// 可以点选、框选，右键空地移动（飞机停在飞机工厂上，不能选）。位置发给服务器保存。
+// 可以点选、框选，右键空地移动（飞机停在机场的机位上，机头朝跑道，不能选）。位置发给服务器保存。
 
 interface Unit {
   img: Phaser.GameObjects.Image;
@@ -51,12 +51,15 @@ export class BaseTroops {
         const frames = unitFrames(t.defId, 'player');
         const tex = frames ? frames[0] : textureKey(t.defId, 'player');
         const a = texAnchor(tex);
-        const img = this.scene.add.image(0, 0, tex).setScale(texScale(tex) * (frames ? 1 : UNIT_SCALE)).setOrigin(a?.x ?? 0.5, a?.y ?? 0.5);
+        const scale = frames ? (t.plane ? PARKED_SCALE : 1) : UNIT_SCALE;
+        const img = this.scene.add.image(0, 0, tex).setScale(texScale(tex) * scale).setOrigin(a?.x ?? 0.5, a?.y ?? 0.5);
         u = { img, defId: t.defId, i: t.i, plane: t.plane, x: start.x, y: start.y, tx: t.x, ty: t.y, facing: Math.PI / 4 };
         this.units.set(k, u);
       }
       u.tx = t.x;
       u.ty = t.y;
+      // 飞机直接停到机位上（机位会随机场移动、扩建变化）
+      if (t.plane) { u.x = t.x; u.y = t.y; u.facing = t.facing ?? u.facing; }
     }
     for (const [k, u] of this.units) {
       if (!alive.has(k)) { u.img.destroy(); this.units.delete(k); this.selected.delete(k); }

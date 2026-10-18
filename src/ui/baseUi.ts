@@ -2,36 +2,35 @@ import { AI_ATTACK } from '../../shared/data/ai';
 import { FACTORY_UNITS, TRAINING, type FactoryId } from '../../shared/data/army';
 import {
   baseDef, BUILD_LIMITS, buildLimit, HALL_STORAGE, MAX_LEVEL, RESOURCE_NAME, RESOURCES, TAX_PER_PERSON, TERRAIN_NAME, upgradable, upgradeCost,
-  type Amounts, type BaseBuildingDef, type BaseBuildingId, type ResourceId,
+  type Amounts, type BaseBuildingDef, type BaseBuildingId,
 } from '../../shared/data/economy';
 import { STAGE_NAME, TECH_REQUIRES, TECH_STAGES, techStage } from '../../shared/data/tech';
 import { DEFS, getDef, MOBILE_UNITS, type DefId } from '../../shared/data/units';
 import { levelOf } from '../../shared/sim/base/base';
-import { hourlyRates, powerInfo } from '../../shared/sim/base/economy';
+import { hourlyRates, listedLevels, marketIndex, powerInfo, privateJobs } from '../../shared/sim/base/economy';
 import type { Roster } from '../../shared/sim/world/sortie';
 import { currentUser, logout } from '../game/api';
 import type { BaseScene } from '../game/BaseScene';
+import { resAmount, resIcon } from './resIcon';
 
 // 基地界面，盖在画面上：
 //   左上角  资源和产能（常驻）
 //   右上角  账号
 //   右下角  功能按钮（建造、买地、科技、财政、演习、系统、世界地图），点开在上方弹出面板
-//   选中建筑时弹出建筑面板；兵营、战车工厂、飞机工厂在面板里研发和生产兵种
+//   选中建筑时弹出建筑面板；兵营、战车工厂、机场在面板里研发和生产兵种（机场还能扩建机库）
 
 type Panel = 'build' | 'tech' | 'finance' | 'drill' | 'system' | 'building' | null;
 
-const SHORT: Record<ResourceId, string> = {
-  gold: '金', food: '粮', wood: '木', stone: '石', iron: '铁', oil: '油', steel: '钢', fuel: '燃', ammo: '弹', electronics: '电子',
-};
-
 // 建造面板的分类
 const BUILD_GROUPS: [string, BaseBuildingId[]][] = [
-  ['民生', ['house', 'market', 'farm', 'powerPlant', 'granary', 'vault', 'lab']],
+  ['民生', ['house', 'market', 'farm', 'powerPlant', 'granary', 'lab']],
+  ['财政', ['vault', 'bank', 'privateEnterprise', 'stateEnterprise', 'stockExchange']],
   ['资源', ['lumberMill', 'quarry', 'mine', 'oilWell']],
-  ['工业', ['steelMill', 'refinery', 'arsenal', 'electronicsPlant']],
+  ['工业', ['arsenal', 'electronicsPlant']],
   ['仓储', ['warehouse', 'oilDepot', 'ammoDepot']],
   ['军工', ['barracks', 'tankFactory', 'airfield']],
-  ['防御', ['mgTower', 'cannonTower', 'atTower', 'aaTower', 'pillbox', 'bunker']],
+  ['防御', ['mgTower', 'cannonTower', 'atTower', 'aaTower', 'mortar', 'mlrs', 'samSite', 'radar']],
+  ['工事', ['pillbox', 'bunker', 'landmine', 'barbedWire', 'tankTrap']],
 ];
 
 const DOCK: [Exclude<Panel, 'building' | null> | 'buyLand' | 'world', string][] = [
@@ -97,6 +96,7 @@ export class BaseUi {
       case 'group': this.buildGroup = Number(arg); this.render(); break;
       case 'build': this.panel = null; s.selectBuild(arg as BaseBuildingId); break;
       case 'cancelMode': s.troops.clear(); s.setMode('idle'); break;
+      case 'rotate': s.rotate(); break;
       case 'move': s.startMove(); break;
       case 'upgrade': s.upgradeSelected(); break;
       case 'demolish': if (confirm('拆除这座建筑？返还一半造价。')) s.demolishSelected(); break;
@@ -181,7 +181,7 @@ export class BaseUi {
   // ---------- 左上角：资源和产能 ----------
 
   private topbarHtml(): string {
-    const res = RESOURCES.map(r => `<div class="res" title="${RESOURCE_NAME[r]}"><span>${SHORT[r]}</span><b data-v="res-${r}"></b><small data-v="rate-${r}"></small></div>`).join('');
+    const res = RESOURCES.map(r => `<div class="res" title="${RESOURCE_NAME[r]}">${resIcon(r)}<b data-v="res-${r}"></b><small data-v="rate-${r}"></small></div>`).join('');
     return `<div class="topbar">
       <div class="resgrid">${res}</div>
       <div class="vitals">
@@ -201,14 +201,15 @@ export class BaseUi {
     else if (s.mode === 'buyLand') text = '买地：点击亮起的地块购买，上面标着价格（红色 = 金币不够）。第 n 块地 = 500 × n^1.5 金币，不分地形';
     else if (s.troops?.selected.size) text = `已选部队：${s.troops.summary()}。右键点空地移动过去，Shift 加选`;
     if (!text) return '<div class="modebar idle">左键选建筑或部队 · 左键拖动框选部队 · 右键拖动或 WASD 移动视角 · 滚轮缩放</div>';
-    return `<div class="modebar">${text}${btn('cancelMode', '', '取消（右键 / Esc）')}</div>`;
+    const rotate = s.canRotate() ? btn('rotate', '', `转向（R）· 现在${s.rot ? '竖放' : '横放'}`) : '';
+    return `<div class="modebar">${text}${rotate}${btn('cancelMode', '', '取消（右键 / Esc）')}</div>`;
   }
 
   private offlineHtml(): string {
     const off = this.scene.offline;
     if (!off) return '';
     const gains = RESOURCES.filter(r => Math.abs(off.gained[r]) >= 1)
-      .map(r => `${RESOURCE_NAME[r]} ${off.gained[r] > 0 ? '+' : ''}${Math.floor(off.gained[r])}`).join('，');
+      .map(r => resAmount(r, `${off.gained[r] > 0 ? '+' : ''}${Math.floor(off.gained[r])}`)).join(' ');
     return `<div class="modal"><div class="card">
       <h2>欢迎回来</h2>
       <p>离开了 ${fmtHours(off.hours)}，期间基地照常运转：${gains || '没有新增产出（仓库满了或还没有生产建筑）'}。</p>
@@ -236,7 +237,7 @@ export class BaseUi {
     const cards = BUILD_GROUPS[this.buildGroup][1].map(id => {
       const d = baseDef(id);
       return btn('build', id, `<b>${d.name}</b> <span class="count">${s.base.count(id)}/${s.base.limit(id)}</span>
-        <small>${d.desc}</small><small class="cost">${costText(d.cost)} · ${d.size}×${d.size}</small>`, { cls: 'card' });
+        <small>${d.desc}</small><small class="cost">${costText(d.cost)} · ${sizeText(d)}</small>`, { cls: 'card' });
     }).join('');
     return `<div class="tabs">${tabs}</div><div class="cards">${cards}</div>`;
   }
@@ -264,7 +265,8 @@ export class BaseUi {
     const st = this.scene.base.state;
     return `<label class="slider">税率 <b data-v="tax-val"></b>　税收 <b data-v="tax-income"></b>
         <input type="range" min="0" max="50" step="1" value="${Math.round(st.taxRate * 100)}" data-input="tax"></label>
-      <p class="hint">每位市民按税率缴税（100% 时每小时 ${TAX_PER_PERSON} 金）。税率越高，人口增长越慢，超过 66% 停止增长。</p>
+      <p class="hint">每位市民按税率缴税（100% 时每小时 ${TAX_PER_PERSON} 金）。税率越高，人口增长越慢，超过 66% 停止增长；私营企业也挣得越少。</p>
+      <p class="hint">别的财路在建造菜单的「财政」里：国营企业（用钢铁燃油换金币）、私营企业（雇市民）、银行（存款生息）、证券交易所（企业上市，看行情）。</p>
       <p class="hint">部队口粮 <b data-v="food-use"></b>，粮食吃光后部队不能出击。</p>`;
   }
 
@@ -298,9 +300,36 @@ export class BaseUi {
       ${btn('demolish', '', '拆除', { cls: 'danger', disabled: !!d.unique })}</div>`;
     const lv = levelOf(sel);
     const title = upgradable(sel.defId) ? `${d.name}　Lv${lv}` : d.name;
-    const info = `<p class="hint">${d.desc}　<small>${d.size}×${d.size} · ${TERRAIN_NAME[s.base.terrainAt(sel.x, sel.y)]}</small></p>`;
-    if (d.factory) return [title, info + this.factoryHtml(sel.defId as FactoryId) + tools];
-    return [title, info + this.upgradeHtml(sel.defId, lv) + tools];
+    const info = `<p class="hint">${d.desc}　<small>${sizeText(d)} · ${TERRAIN_NAME[s.base.terrainAt(sel.x, sel.y)]}</small></p>`;
+    if (d.factory) {
+      const up = d.hangars ? this.upgradeHtml(sel.defId, lv).replace('<p class="hint">升级不占新地方', '<p class="hint">升级机场就是扩建机库，不占新地方') : '';
+      return [title, info + this.factoryHtml(sel.defId as FactoryId) + up + tools];
+    }
+    return [title, info + this.financeStatusHtml(sel.defId) + this.upgradeHtml(sel.defId, lv) + tools];
+  }
+
+  // 财政建筑的实时情况：私企上岗人数、银行本小时利息、交易所行情
+  private financeStatusHtml(id: BaseBuildingId): string {
+    const b = this.scene.base, d = baseDef(id), st = b.state;
+    let text = '';
+    if (d.jobs) {
+      const { jobs, employed } = privateJobs(b);
+      const per = d.jobs.gold * (1 - st.taxRate);
+      text = `全基地私企岗位 ${jobs} 个，上岗 ${employed} 人。税率 ${Math.round(st.taxRate * 100)}%，每人每小时挣 ${fmt(per)} 金`
+        + (employed < jobs ? '<br><span class="neg">市民不够，有岗位空着——多建民居</span>' : '');
+    } else if (d.interest) {
+      const cap = b.storageCap().gold;
+      text = `存款 ${Math.floor(st.res.gold)} 金，现在每小时利息 ${fmt(st.res.gold * d.interest)}。`
+        + `金币容量 ${cap}，存满后每小时最多 ${fmt(cap * d.interest)}——多建金库、升级银行能存得更多`;
+    } else if (d.listing) {
+      const t = Date.now(), idx = marketIndex(st.seed, t), next = marketIndex(st.seed, t + 3600_000);
+      const n = listedLevels(b);
+      const lv = st.buildings.filter(o => o.defId === id).reduce((s, o) => s + levelOf(o), 0);
+      text = `上市企业等级合计 ${n}。行情指数 <b>${idx.toFixed(2)}</b>${next > idx ? '<span class="pos">（上涨中）</span>' : '<span class="neg">（下跌中）</span>'}，`
+        + `现在每小时约 ${resAmount('gold', fmt(d.listing * lv * n * idx))}`
+        + (n === 0 ? '<br><span class="neg">还没有国营或私营企业上市——先建企业</span>' : '');
+    }
+    return text ? `<p class="hint">${text}</p>` : '';
   }
 
   // 升级：当前效果、下一级效果和花费
@@ -343,9 +372,16 @@ export class BaseUi {
     const repair = b.state.wounded.length
       ? `<div class="unitrow"><div>伤员 <b>${wounded}</b> 名（全基地共 ${b.state.wounded.length} 名）<small class="cost">全部维修 ${costText(b.repairAllCost())}</small></div>${btn('repair', '', '全部维修')}</div>`
       : '';
-    return `${tabs}${rows || '<p class="hint">还没有研发任何兵种，到“研发”里研发。</p>'}${repair}
+    const hangar = id === 'airfield'
+      ? `<p class="hangar">机库：已停 <b>${b.hangarUsed()}</b> / ${b.hangarCap()}（战斗机占 1 个，轰炸机占 2 个）</p>` : '';
+    return `${tabs}${hangar}${rows || '<p class="hint">还没有研发任何兵种，到“研发”里研发。</p>'}${repair}
       <p class="hint">士兵从市民中征召，和市民共用住房，每小时吃粮。</p>`;
   }
+}
+
+// 占地：正方形写边长，长方形写长 × 宽
+function sizeText(d: { size: number; rect?: [number, number] }): string {
+  return d.rect ? `${d.rect[0]}×${d.rect[1]}` : `${d.size}×${d.size}`;
 }
 
 function factoryOfUnit(id: DefId): FactoryId {
@@ -361,6 +397,7 @@ function requireNote(b: BaseScene['base'], id: DefId): string {
 
 function unitStats(id: DefId): string {
   const d = getDef(id), w = d.weapons[0];
+  if (d.kind === 'trap' || d.kind === 'obstacle' || d.kind === 'support') return `血量 ${d.hp}`;
   return `血量 ${d.hp}${w ? ` · 伤害 ${w.dmg}/${w.interval}秒${w.range ? ` · 射程 ${w.range}` : ''}` : ''} · 速度 ${d.speed}`;
 }
 
@@ -371,8 +408,8 @@ function btn(act: string, arg: string, label: string,
 }
 
 function costText(cost: Amounts): string {
-  const parts = RESOURCES.filter(r => cost[r]).map(r => `${SHORT[r]} ${cost[r]}`);
-  return parts.length ? parts.join(' · ') : '免费';
+  const parts = RESOURCES.filter(r => cost[r]).map(r => resAmount(r, cost[r]!));
+  return parts.length ? parts.join(' ') : '免费';
 }
 
 function fmt(v: number): string {
@@ -400,7 +437,7 @@ function esc(s: string): string {
 // 某个等级的建筑效果，一行写完
 function effectText(id: BaseBuildingId, d: BaseBuildingDef, k: number): string {
   const parts: string[] = [];
-  const amounts = (a: Amounts | undefined) => RESOURCES.filter(r => a?.[r]).map(r => `${RESOURCE_NAME[r]} ${a![r]! * k}`).join('、');
+  const amounts = (a: Amounts | undefined) => RESOURCES.filter(r => a?.[r]).map(r => resAmount(r, a![r]! * k)).join(' ');
   if (d.produces) parts.push(`每小时产 ${amounts(d.produces)}`);
   if (d.consumes) parts.push(`消耗 ${amounts(d.consumes)}`);
   if (d.storage) parts.push(`容量 +${amounts(d.storage)}`);
@@ -409,6 +446,10 @@ function effectText(id: BaseBuildingId, d: BaseBuildingDef, k: number): string {
   if (d.research) parts.push(`科研 ${d.research * k}/时`);
   if (d.power) parts.push(d.power > 0 ? `发电 ${d.power * k}` : `耗电 ${-d.power * k}`);
   if (d.fuelBoost) parts.push(`有燃油时再 +${d.fuelBoost.power * k} 电（烧 ${d.fuelBoost.fuel * k} 燃油/时）`);
+  if (d.hangars) parts.push(`机库 ${d.hangars * k} 个`);
+  if (d.jobs) parts.push(`岗位 ${d.jobs.per * k} 个，每人每小时 ${d.jobs.gold} 金 ×（1 − 税率）`);
+  if (d.interest) parts.push(`存款利息 ${d.interest * 100}%/时，不设上限`);
+  if (d.listing) parts.push(`每小时 ${d.listing * k} 金 × 上市企业等级 × 行情`);
   return parts.join(' · ');
 }
 

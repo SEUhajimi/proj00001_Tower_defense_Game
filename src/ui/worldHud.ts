@@ -4,6 +4,7 @@ import { DEFS, type DefId } from '../../shared/data/units';
 import { aiCapacity, attackable, defenseLeft, type AiBase } from '../../shared/sim/world/ai';
 import type { Roster } from '../../shared/sim/world/sortie';
 import type { WorldScene } from '../game/WorldScene';
+import { resAmount, resIcon } from './resIcon';
 
 // 世界地图界面，盖在画面上（和基地界面同样的布局）：
 //   左上角  征服进度、附属据点每小时上交多少、可出击的部队
@@ -79,7 +80,7 @@ export class WorldHud {
     const d = defenseLeft(ai), pct = Math.round(d * 100);
     const cap = aiCapacity(ai.level);
     const resRows = RESOURCES.filter(r => cap[r] > 0).map(r =>
-      `<tr><td>${RESOURCE_NAME[r]}</td><td data-v="ai-${r}"></td><td class="pos" data-v="ai-loot-${r}"></td></tr>`).join('');
+      `<tr><td>${resIcon(r)} ${RESOURCE_NAME[r]}</td><td data-v="ai-${r}"></td><td class="pos" data-v="ai-loot-${r}"></td></tr>`).join('');
     let recover = '';
     if (ai.lost.length && ai.lastAttack) {
       const h = Math.max(0, RECOVER_HOURS - (Date.now() - ai.lastAttack) / 3600_000);
@@ -128,8 +129,8 @@ function tributeText(vassals: AiBase[]): string {
     for (const r of RESOURCES) sum[r] += rates[r] * TRIBUTE_SHARE;
     pop += v.level * TRIBUTE_POP_PER_LEVEL;
   }
-  const parts = RESOURCES.filter(r => sum[r] > 0).map(r => `${RESOURCE_NAME[r]} ${Math.round(sum[r])}`);
-  return [...parts, `市民 ${pop}`].join('、');
+  const parts = RESOURCES.filter(r => sum[r] > 0).map(r => resAmount(r, Math.round(sum[r])));
+  return [...parts, `市民 ${pop}`].join(' ');
 }
 
 function btn(act: string, arg: string, label: string, cls = '', disabled = false): string {

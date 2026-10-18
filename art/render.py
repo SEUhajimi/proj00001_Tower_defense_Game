@@ -20,8 +20,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpy  # noqa: E402
 
 from kit import (  # noqa: E402
-    OUT, TEAM, box, camera, cyl, empty, flat, manifest, pbr, render, reset, shadow_catcher, sphere,
+    OUT, TEAM, box, camera, cyl, empty, flat, lift_px, manifest, pbr, render, reset, shadow_catcher, sphere, top_height,
 )
+import buildings  # noqa: E402
+import props  # noqa: E402
+import damage  # noqa: E402
+import fx  # noqa: E402
+import icons  # noqa: E402
+import levels  # noqa: E402
 import vehicles  # noqa: E402
 
 # ---------- 地面 ----------
@@ -56,60 +62,71 @@ def render_ground() -> None:
                 render(f'ground/{terrain}-{i}{j}.png', w, w // 2, 0)
 
 
-# ---------- 兵营：半圆拱形营房（铁皮）+ 混凝土地坪 + 沙袋 + 旗杆 ----------
+# ---------- 建筑 ----------
 
-def build_barracks(team: str):
-    root = empty('barracks')
-    concrete = pbr('concrete', 'concrete_floor', 0.6)
-    iron = pbr('corrugated', 'corrugated', 1.5, tint=(0.62, 0.66, 0.55), metal=0.3)
-    wall = pbr('wall', 'concrete', 1.0, tint=(0.8, 0.78, 0.72))
-    sand = flat('sand', (0.55, 0.47, 0.33), rough=0.95)
-    dark = flat('dark', (0.06, 0.06, 0.05), rough=0.5)
-    door = pbr('door', 'shutter', 1.0, tint=(0.45, 0.5, 0.38))
-
-    box((2.8, 2.8, 0.08), (0, 0, 0.04), concrete, bevel=0.02, parent=root)
-    # 拱形营房：横放的半圆柱，沿 x 方向（游戏里朝右下）
-    hut = cyl(0.78, 2.2, (0.1, 0.25, 0.08), iron, rot=(0, math.radians(90), 0), verts=28, parent=root)
-    bpy.context.view_layer.objects.active = hut
-    # 只留上半个圆柱
-    mod = hut.modifiers.new('cut', 'BOOLEAN')
-    cutter = box((3, 2, 1), (0.1, 0.25, -0.42), dark)
-    mod.object = cutter
-    mod.operation = 'DIFFERENCE'
-    cutter.hide_render = True
-    # 两头的墙和门
-    for sx in (-1, 1):
-        end = cyl(0.76, 0.06, (0.1 + sx * 1.08, 0.25, 0.08), wall, rot=(0, math.radians(90), 0), verts=28, parent=root)
-        m2 = end.modifiers.new('cut', 'BOOLEAN')
-        m2.object = cutter
-        m2.operation = 'DIFFERENCE'
-    box((0.06, 0.42, 0.5), (1.21, 0.25, 0.33), door, parent=root)
-    # 侧面的小窗
-    for k in (-0.5, 0.1, 0.7):
-        box((0.22, 0.04, 0.14), (k, -0.47, 0.5), dark, rot=(math.radians(-25), 0, 0), parent=root)
-    # 沙袋墙
-    for k in range(5):
-        box((0.26, 0.16, 0.12), (-1.05 + k * 0.27, -1.05, 0.14), sand, bevel=0.04, parent=root)
-        box((0.26, 0.16, 0.12), (-0.92 + k * 0.27, -1.05, 0.26), sand, bevel=0.04, parent=root)
-    # 旗杆和阵营旗
-    cyl(0.025, 1.6, (1.15, -1.1, 0.88), flat('pole', (0.6, 0.6, 0.62), metal=0.8, rough=0.3), parent=root)
-    box((0.02, 0.42, 0.26), (1.15, -0.88, 1.5), flat('flag', TEAM[team], rough=0.8), parent=root)
-    # 物资箱
-    crate = pbr('crate', 'green_metal', 2.0, tint=(0.7, 0.75, 0.55))
-    box((0.3, 0.3, 0.26), (-1.1, 0.95, 0.21), crate, bevel=0.02, parent=root)
-    box((0.3, 0.3, 0.26), (-0.75, 1.0, 0.21), crate, bevel=0.02, parent=root)
-    box((0.3, 0.3, 0.26), (-0.92, 0.97, 0.47), crate, bevel=0.02, parent=root)
-    return root
+def building_canvas(size: int) -> tuple[int, int, float]:
+    """按已经搭好的模型定图的大小：比占地菱形宽一圈，右下留出影子；越高的建筑图越高、影子越长。
+    返回 (宽, 高, 相机下移量)。"""
+    z = top_height()
+    w = int(size * 160 + 60 + z * 90)
+    below = 0.42 * w  # 占地中心以下：下半个菱形和影子
+    h = int(max(w, below + lift_px(z) * 2 + size * 32 + 30))
+    return w, h, (h - below - h / 2) / max(w, h)
 
 
-def render_building(name: str, size: int, builder) -> None:
-    for team in ('player', 'enemy'):
-        reset()
-        shadow_catcher()
-        builder(team)
-        w = int(size * 64 * 2 * 1.25)
-        camera(w, w, shift_y=0.12)
-        render(f'buildings/{name}-{team}.png', w, w, 0.12)
+def render_building(name: str, size: int, builder, teams=('player', 'enemy'), variants=('', 'damaged')) -> None:
+    """一种建筑一张图（分阵营的各一张），再各出一张受损的（-damaged）。锚点是占地中心，manifest 里另记 lift：
+    建筑最高点在画面上比占地中心高多少像素（游戏里 1 倍显示，放血条用）。受损图的画布和 lift 跟完好的一样。"""
+    for team in teams:
+        for variant in variants:
+            reset()
+            shadow_catcher()
+            builder(team)
+            w, h, shift = building_canvas(size)
+            lift = round(lift_px(top_height()), 1)
+            if variant == 'damaged':
+                damage.damage(size, sum(map(ord, name)))
+            camera(w, h, shift_y=shift)
+            suffix = f'-{variant}' if variant else ''
+            render(f'buildings/{name}-{team}{suffix}.png', w, h, shift, {'lift': lift})
+
+
+def render_airfield(variants=('', 'damaged')) -> None:
+    """机场（8×4）：两个朝向 × 1–5 级（机库座数）各一张，再各一张受损的。
+    画布按 6×6 的正方形算（等角投影下 8×4 的外框和 6×6 一样大）。"""
+    for rot in (0, 1):
+        for level in range(1, 6):
+            for variant in variants:
+                reset()
+                shadow_catcher(14)
+                buildings.airfield('player', level, rot)
+                w, h, shift = building_canvas(6)
+                lift = round(lift_px(top_height()), 1)
+                if variant == 'damaged':
+                    damage.damage(4, 977 + level * 13 + rot)
+                camera(w, h, shift_y=shift)
+                suffix = f'-{variant}' if variant else ''
+                render(f'buildings/airfield-player-r{rot}-l{level}{suffix}.png', w, h, shift, {'lift': lift})
+
+
+def render_ruins(name: str, size: int, builder) -> None:
+    """废墟（通用瓦砾堆）：锚点是占地中心。"""
+    reset()
+    shadow_catcher()
+    builder()
+    w, h, shift = building_canvas(size)
+    camera(w, h, shift_y=shift)
+    render(f'ruins/{name}.png', w, h, shift)
+
+
+def render_prop(name: str, builder) -> None:
+    """树丛、石堆：占 2×2 格，锚点是这 2×2 格的中心，不分阵营。"""
+    reset()
+    shadow_catcher()
+    builder()
+    w, h, shift = building_canvas(2)
+    camera(w, h, shift_y=shift)
+    render(f'props/{name}.png', w, h, shift, {'lift': round(lift_px(top_height()), 1)})
 
 
 # ---------- 步兵：头盔、上身、腿、步枪，16 个朝向 ----------
@@ -129,12 +146,34 @@ def build_soldier(team: str, weapon: str = 'rifle'):
     box((0.1 * s, 0.18 * s, 0.2 * s), (-0.1 * s, 0, 0.5 * s), flat('pack', (0.12, 0.1, 0.06), rough=0.9), bevel=0.02, parent=root)
     box((0.02 * s, 0.24 * s, 0.05 * s), (0.065 * s, 0, 0.55 * s), flat('band', TEAM[team]), parent=root)
     sphere(0.075 * s, (0.01 * s, 0, 0.7 * s), skin, parent=root)
-    sphere(0.095 * s, (0, 0, 0.74 * s), helmet, scale=(1, 1, 0.65), parent=root)
+    if weapon == 'sniper':  # 狙击兵戴奔尼帽，背上披一块吉利伪装
+        cyl(0.13 * s, 0.012 * s, (0, 0, 0.75 * s), flat('boonie', (0.2, 0.2, 0.1), rough=0.9), verts=16, parent=root)
+        sphere(0.075 * s, (0, 0, 0.77 * s), flat('boonie', (0.2, 0.2, 0.1), rough=0.9), scale=(1, 1, 0.6), parent=root)
+        sphere(0.16 * s, (-0.06 * s, 0, 0.5 * s), flat('ghillie', (0.08, 0.09, 0.035), rough=1), scale=(0.8, 1, 1.3), parent=root)
+    else:
+        sphere(0.095 * s, (0, 0, 0.74 * s), helmet, scale=(1, 1, 0.65), parent=root)
     # 双臂端枪
     for side in (-1, 1):
         box((0.22 * s, 0.06 * s, 0.06 * s), (0.1 * s, side * 0.1 * s, 0.5 * s), uniform, rot=(0, math.radians(15), side * math.radians(-12)), parent=root)
     length = {'rifle': 0.42, 'smg': 0.28, 'mg': 0.5, 'sniper': 0.58, 'sapper': 0.3}[weapon]
     box((length * s, 0.035 * s, 0.05 * s), (0.2 * s + length * s / 2 - 0.1 * s, 0.03 * s, 0.53 * s), gun, parent=root)
+    tip = 0.1 * s + length * s
+    if weapon == 'smg':  # 冲锋枪：弹匣
+        box((0.03 * s, 0.03 * s, 0.1 * s), (0.2 * s, 0.03 * s, 0.46 * s), gun, parent=root)
+    elif weapon == 'mg':  # 机枪：粗枪管、两脚架，腰间挂弹药箱和弹链
+        box((length * 0.4 * s, 0.06 * s, 0.08 * s), (0.25 * s, 0.03 * s, 0.53 * s), gun, parent=root)
+        for side in (-1, 1):
+            box((0.01 * s, 0.01 * s, 0.12 * s), (tip - 0.05 * s, 0.03 * s + side * 0.03 * s, 0.47 * s), gun, rot=(side * math.radians(20), 0, 0), parent=root)
+        box((0.09 * s, 0.07 * s, 0.07 * s), (0.18 * s, -0.08 * s, 0.42 * s), flat('ammo', (0.18, 0.2, 0.1), rough=0.7), parent=root)
+        box((0.02 * s, 0.05 * s, 0.1 * s), (0.26 * s, -0.02 * s, 0.48 * s), flat('brass', (0.6, 0.45, 0.15), metal=0.8, rough=0.3), parent=root)
+    elif weapon == 'sniper':  # 狙击枪：瞄准镜
+        cyl(0.018 * s, 0.14 * s, (0.25 * s, 0.03 * s, 0.58 * s), gun, rot=(0, math.radians(90), 0), verts=10, parent=root)
+    elif weapon == 'sapper':  # 爆破兵：背上的炸药包和工兵铲
+        box((0.1 * s, 0.2 * s, 0.22 * s), (-0.14 * s, 0, 0.5 * s), flat('charge', (0.55, 0.12, 0.06), rough=0.7), bevel=0.02, parent=root)
+        for z in (0.44, 0.56):
+            box((0.11 * s, 0.21 * s, 0.02 * s), (-0.14 * s, 0, z * s), flat('tape', (0.75, 0.65, 0.1), rough=0.6), parent=root)
+        box((0.015 * s, 0.015 * s, 0.3 * s), (-0.2 * s, 0.1 * s, 0.6 * s), flat('handle', (0.3, 0.2, 0.1), rough=0.8), rot=(math.radians(15), 0, 0), parent=root)
+        box((0.06 * s, 0.01 * s, 0.08 * s), (-0.2 * s, 0.14 * s, 0.77 * s), gun, rot=(math.radians(15), 0, 0), parent=root)
     return root
 
 
@@ -158,11 +197,126 @@ def render_directions(name: str, builder, size_px: int, shift: float, dirs: int 
 
 JOBS = {
     'ground': render_ground,
-    'barracks': lambda: render_building('barracks', 3, build_barracks),
     'rifle': lambda: render_directions('rifle', lambda t: build_soldier(t, 'rifle'), 112, 0.12),
+    'smg': lambda: render_directions('smg', lambda t: build_soldier(t, 'smg'), 112, 0.12),
+    'mg': lambda: render_directions('mg', lambda t: build_soldier(t, 'mg'), 112, 0.12),
+    'sniper': lambda: render_directions('sniper', lambda t: build_soldier(t, 'sniper'), 112, 0.12),
+    'sapper': lambda: render_directions('sapper', lambda t: build_soldier(t, 'sapper'), 112, 0.12),
     'axes': lambda: render_axes(),
     'preview': lambda: render_preview(),
+    'bpreview': lambda: render_building_preview(),
+    'spreview': lambda: render_soldier_preview(),
 }
+# 建筑：每种一项（buildings.py 里的 BUILDINGS）
+for _id, (_build, _size, _both) in buildings.BUILDINGS.items():
+    JOBS[_id] = (lambda i, b, sz, both: lambda: render_building(i, sz, b, ('player', 'enemy') if both else ('player',)))(_id, _build, _size, _both)
+# 单个建筑只渲染受损图：hall-damaged 这样
+for _id, (_b, _sz, _both) in buildings.BUILDINGS.items():
+    JOBS[f'{_id}-damaged'] = (lambda i, b, sz, both: lambda: render_building(i, sz, b, ('player', 'enemy') if both else ('player',), ('damaged',)))(_id, _b, _sz, _both)
+JOBS['airfield'] = render_airfield
+
+
+def render_icons() -> None:
+    """资源图标：每种 128×128 一张，带一点影子，界面里缩小显示。"""
+    for name, build in icons.ICONS.items():
+        reset()
+        shadow_catcher(3)
+        build()
+        camera(128, 128)
+        fit_camera(0.1)
+        bpy.context.scene.cycles.samples = 32
+        render(f'icons/res-{name}.png', 128, 128, 0)
+
+
+def fit_camera(margin: float) -> None:
+    """把相机对准场景里的物件（不算影子接收面），缩放到刚好装下、四周留 margin 的空。"""
+    from bpy_extras.object_utils import world_to_camera_view
+    sc = bpy.context.scene
+    cam = sc.camera
+    bpy.context.view_layer.update()
+    deps = bpy.context.evaluated_depsgraph_get()
+    xs, ys = [], []
+    for o in sc.objects:
+        if o.type != 'MESH' or o.is_shadow_catcher or o.hide_render:
+            continue
+        ev = o.evaluated_get(deps)
+        for v in ev.data.vertices:
+            p = world_to_camera_view(sc, cam, ev.matrix_world @ v.co)
+            xs.append(p.x)
+            ys.append(p.y)
+    size = max(max(xs) - min(xs), max(ys) - min(ys)) * (1 + margin * 2)
+    old = cam.data.ortho_scale
+    cam.data.shift_x = ((min(xs) + max(xs)) / 2 - 0.5) / size
+    cam.data.shift_y = ((min(ys) + max(ys)) / 2 - 0.5) / size
+    cam.data.ortho_scale = old * size
+
+
+JOBS['icons'] = render_icons
+
+
+def render_airfield_preview() -> None:
+    """检查用：机场 3 级横放、5 级竖放各一张快速图到 debug/。"""
+    for rot, level in ((0, 3), (1, 5)):
+        reset()
+        shadow_catcher(14)
+        buildings.airfield('player', level, rot)
+        w, h, shift = building_canvas(6)
+        camera(w, h, shift_y=shift)
+        bpy.context.scene.cycles.samples = 12
+        render(f'debug/airfield-r{rot}-l{level}.png', w, h, shift)
+
+
+JOBS['afpreview'] = render_airfield_preview
+# 能升级的建筑：每种一项，1–5 级各一张、再各一张受损的（buildings/hall-player-l3.png）
+def render_leveled(name: str, builder, size: int, variants=('', 'damaged')) -> None:
+    for level in range(1, 6):
+        for variant in variants:
+            reset()
+            shadow_catcher()
+            builder('player', level)
+            w, h, shift = building_canvas(size)
+            lift = round(lift_px(top_height()), 1)
+            if variant == 'damaged':
+                damage.damage(size, sum(map(ord, name)) + level)
+            camera(w, h, shift_y=shift)
+            suffix = f'-{variant}' if variant else ''
+            render(f'buildings/{name}-player-l{level}{suffix}.png', w, h, shift, {'lift': lift})
+
+
+for _id, (_build, _size) in levels.LEVELED.items():
+    JOBS[_id] = (lambda i, b, sz: lambda: render_leveled(i, b, sz))(_id, _build, _size)
+
+
+def render_levels_preview(only=None) -> None:
+    """检查用：每种能升级的建筑 1–5 级快速各渲染一张到 debug/levels/（only 只渲染这一种）。"""
+    for name, (build, size) in levels.LEVELED.items():
+        if only and name != only:
+            continue
+        for level in range(1, 6):
+            reset()
+            shadow_catcher()
+            build('player', level)
+            w, h, shift = building_canvas(size)
+            camera(w, h, shift_y=shift)
+            bpy.context.scene.cycles.samples = 6
+            render(f'debug/levels/{name}-l{level}.png', w, h, shift)
+
+
+JOBS['lpreview'] = render_levels_preview
+for _id in levels.LEVELED:
+    JOBS[f'{_id}-preview'] = (lambda i: lambda: render_levels_preview(i))(_id)
+# 只渲染受损图（完好的已经有了）
+JOBS['damaged'] = lambda: [render_building(i, sz, b, ('player', 'enemy') if both else ('player',), ('damaged',))
+                           for i, (b, sz, both) in buildings.BUILDINGS.items()]
+# 废墟：每张一项（damage.py 里的 RUINS），ruins 一次全渲染
+for _id, (_size, _build) in damage.RUINS.items():
+    JOBS[f'ruin-{_id}'] = (lambda i, sz, b: lambda: render_ruins(i, sz, b))(_id, _size, _build)
+JOBS['ruins'] = lambda: [JOBS[f'ruin-{i}']() for i in damage.RUINS]
+# 特效：explosion smoke fire flash
+JOBS.update(fx.FX)
+# 树丛、石堆：每张一项（props.py 里的 PROPS）
+for _id, _build in props.PROPS.items():
+    JOBS[_id] = (lambda i, b: lambda: render_prop(i, b))(_id, _build)
 # 坦克和飞机：每个型号一项（vehicles.py 里的 MODELS）
 for _id, (_build, _px, _air) in vehicles.MODELS.items():
     JOBS[_id] = (lambda b, i, px, air: lambda: render_directions(i, b, px, 0.0 if air else 0.06, shadow=not air))(_build, _id, _px, _air)
@@ -180,6 +334,31 @@ def render_preview() -> None:
         render(f'debug/preview-{name}.png', px, px, 0)
 
 
+def render_soldier_preview() -> None:
+    """检查用：四种步兵各一张侧面放大图到 debug/。"""
+    for w in ('rifle', 'smg', 'mg', 'sniper', 'sapper'):
+        reset()
+        shadow_catcher(4)
+        root = build_soldier('player', w)
+        root.rotation_euler = (0, 0, math.radians(60))
+        root.scale = (3, 3, 3)
+        camera(320, 320, 0.15)
+        bpy.context.scene.cycles.samples = 16
+        render(f'debug/soldier-{w}.png', 320, 320, 0)
+
+
+def render_building_preview() -> None:
+    """检查用：每种建筑快速渲染一张（采样少）到 debug/buildings/。"""
+    for name, (build, size, _) in buildings.BUILDINGS.items():
+        reset()
+        shadow_catcher()
+        build('player')
+        w, h, shift = building_canvas(size)
+        camera(w, h, shift_y=shift)
+        bpy.context.scene.cycles.samples = 8
+        render(f'debug/buildings/{name}.png', w, h, shift)
+
+
 def render_axes() -> None:
     """标定用：红色条沿游戏 +x，绿色条沿游戏 +y，看渲染出来的方向对不对。"""
     reset()
@@ -192,7 +371,9 @@ def render_axes() -> None:
 
 def main() -> None:
     args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['all']
-    jobs = [j for j in JOBS if j not in ('axes', 'preview')] if 'all' in args else args
+    skip = ('axes', 'preview', 'bpreview', 'spreview', 'afpreview', 'lpreview', 'damaged', 'ruins')
+    skip += tuple(j for j in JOBS if j.endswith('-preview'))  # damaged、ruins 和单项重复
+    jobs = [j for j in JOBS if j not in skip] if 'all' in args else args
     path = os.path.join(OUT, 'manifest.json')
     if os.path.exists(path):
         manifest.update(json.load(open(path, encoding='utf8')))

@@ -35,7 +35,7 @@ describe('存档', () => {
       const state = parseSave(JSON.stringify({ ...rest, tech: version === 3 ? ['rifle'] : undefined, ai: oldAi, version }));
       expect(typeof state).not.toBe('string');
       if (typeof state === 'string') return;
-      expect(state.version).toBe(5);
+      expect(state.version).toBe(7);
       expect(state.tech).toEqual(version === 2 ? START_TECH : ['rifle']);
       expect(state.ai.length).toBe(20);
       expect(state.ai.every(a => Array.isArray(a.links) && a.owner === 'ai')).toBe(true);

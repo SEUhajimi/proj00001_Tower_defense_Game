@@ -38,7 +38,7 @@ npm start
 | `server/` | 后端：账号、存档、基地操作、出击结算（Node.js + SQLite） |
 | `src/` | 前端：Phaser 画面（`game/`）、右侧面板和登录界面（`ui/`） |
 | `public/assets/rendered/` | Blender 渲染的美术（由 `art/render.py` 生成） |
-| `public/assets/kenney/` | 还没渲染的部分先用 Kenney 的 CC0 素材，来源见其中的 CREDITS.md |
+| `public/assets/kenney/` | 早期的 Kenney CC0 素材，现在只在渲染图缺失时顶上，来源见其中的 CREDITS.md |
 | `art/` | 美术工具：下载 CC0 贴图、在 Blender 里建模渲染 |
 | `tests/` | 自动测试 |
 | `legacy/` | 最早的 HTML 原型 |
@@ -52,4 +52,5 @@ python art/fetch_textures.py
 E:/tools/blender/blender.exe -b -P art/render.py -- all
 ```
 
-只渲染其中几样：把 `all` 换成 `ground`、`barracks`、`tank2`、`rifle` 等（见 render.py 里的 JOBS）。
+只渲染其中几样：把 `all` 换成 `ground`、`hall`（能升级的建筑会出 1–5 级各一张）、`airfield`、`mgTower`、`tank2`、`sniper`、`icons` 等（见 render.py 里的 JOBS）。
+检查模型可以先出快速预览：`hall-preview`（某种建筑 1–5 级）、`bpreview`（不分级的建筑和塔），图在 `public/assets/rendered/debug/`（不进 git）。

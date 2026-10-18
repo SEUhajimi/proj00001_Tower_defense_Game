@@ -4,6 +4,7 @@ import { RESOURCE_NAME, RESOURCES } from '../../shared/data/economy';
 import { DEFS, type DefId, type UnitDef } from '../../shared/data/units';
 import { isAir, isMobile, type Side, type Stance } from '../../shared/sim/battle';
 import type { BattleScene } from '../game/BattleScene';
+import { resIcon } from './resIcon';
 
 // 战斗界面右侧面板。阶段切换时 render() 重建结构，refresh() 定时刷新数字。
 
@@ -42,7 +43,7 @@ export class Hud {
       case 'selType': s.selectType(arg as DefId); break;
       case 'clearSel': s.clearSelection(); break;
       case 'pause': s.paused = !s.paused; this.render(); break;
-      case 'speed': s.speed = s.speed >= 4 ? 1 : s.speed * 2; this.render(); break;
+      case 'speed': s.cycleSpeed(); break;
       case 'retreat': s.retreat(); break;
       case 'again': s.newBattle(); break;
       case 'home': s.goHome(); break;
@@ -137,10 +138,10 @@ export class Hud {
 
   private battleHtml(): string {
     const s = this.scene, drill = s.mode === 'drill';
-    const myPlanes = [...new Set(s.battle.living('player').filter(e => isAir(e) && e.def.kind === 'bomber').map(e => e.defId))];
+    const myPlanes = [...new Set(s.battle.living('player').filter(e => isAir(e) && !e.launch).map(e => e.defId))];
     const planeBtns = myPlanes.length
       ? `<div class="row" style="margin-top:6px">${myPlanes.map(id => btn('selType', id, `选中全部${DEFS[id].name}`)).join('')}</div>
-        <p class="hint">轰炸机要你指定目标：选中后右键点敌兵或敌塔，炸完自动返航挂弹再去。战斗机自动来回投弹，不用管。</p>`
+        <p class="hint">飞机会自己找目标：轰炸机先炸防空炮，再炸别的塔和工事；战斗机先打敌机，再对地投弹。想指定目标就选中后右键点它。</p>`
       : '';
     return `
       <h2>${drill ? '演习中' : '交战中'} <span class="time" data-v="time"></span></h2>
@@ -160,11 +161,13 @@ export class Hud {
         ${btn('all', 'assault', s.selected.size ? '选中的出击' : '全军出击')}
         ${btn('all', 'hold', s.selected.size ? '选中的驻守' : '全军驻守')}
       </div>
-      <p class="hint">左键拖动框选（Shift 追加）· 右键点敌人集火 · 右键点空地移动，到达后驻守</p>
+      <p class="hint">左键拖动框选（Shift 追加）· 双击或 Ctrl+点击选中屏幕上同一种兵 · Ctrl+A 全选<br>
+        右键点敌人集火（鼠标变成准星）· 右键点空地移动，到达后驻守<br>
+        Shift+数字键编组 · 数字键选中这一组，连按两下镜头跳过去</p>
       <h3>战斗控制</h3>
       <div class="row">
         ${btn('pause', '', s.paused ? '继续' : '暂停')}
-        ${btn('speed', '', `速度 ${s.speed}x`)}
+        ${btn('speed', '', `速度 ${s.speed}×`)}
       </div>
       ${drill ? btn('retreat', '', '结束演习', { danger: true }) : btn('retreat', '', '撤退（拿不到掠夺）', { danger: true })}
       ${this.helpHtml()}`;
@@ -243,7 +246,7 @@ export class Hud {
     if (r.loot) {
       const rows = RESOURCES.filter(k => r.loot!.loot[k] > 0).map(k => {
         const lost = r.loot!.loot[k] - r.loot!.kept[k];
-        return `<tr><td>${RESOURCE_NAME[k]}</td><td class="pos">+${r.loot!.kept[k]}</td><td>${lost > 0 ? `<span class="neg">${lost} 放不下作废</span>` : ''}</td></tr>`;
+        return `<tr><td>${resIcon(k)} ${RESOURCE_NAME[k]}</td><td class="pos">+${r.loot!.kept[k]}</td><td>${lost > 0 ? `<span class="neg">${lost} 放不下作废</span>` : ''}</td></tr>`;
       }).join('');
       parts.push(`<h3>掠夺（对方仓库的 50%）</h3><table class="stats">${rows}</table>`);
     }

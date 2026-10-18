@@ -85,6 +85,11 @@ html, body {
 #hud .resgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; font-size: 12px; }
 #hud .resgrid .res { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
 #hud .resgrid .res span { color: var(--muted); min-width: 30px; }
+/* 资源图标：跟文字同高，略大一点；数量紧跟在图标后面 */
+img.ri { width: 1.45em; height: 1.45em; object-fit: contain; vertical-align: -0.4em; margin-right: 1px; }
+.ri-text { color: var(--mil-accent); font-weight: bold; }
+.ra { display: inline-flex; align-items: center; gap: 1px; white-space: nowrap; margin-right: 6px; font-variant-numeric: tabular-nums; }
+.ra:last-child { margin-right: 0; }
 #hud .resgrid .res b { font-weight: normal; font-variant-numeric: tabular-nums; }
 #hud .resgrid .res b.full { color: #ffc040; }
 #hud .resgrid .res small { font-size: 11px; }
@@ -188,7 +193,8 @@ html, body {
   padding: 8px 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
 }
 .overlay .resgrid { display: grid; grid-template-columns: repeat(5, auto); gap: 3px 14px; }
-.overlay .res { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.overlay .res { display: flex; align-items: center; gap: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.overlay .res img.ri { width: 26px; height: 26px; vertical-align: middle; }
 .overlay .res span { color: var(--mil-accent); font-weight: bold; min-width: 14px; }
 .overlay .res b { font-weight: normal; }
 .overlay .res b.full { color: #ffb84a; }
@@ -269,3 +275,5 @@ html, body {
 .overlay table.stats td, .overlay table.stats th { padding: 3px 4px; border-bottom: 1px solid var(--mil-line); }
 
 .overlay .unitrow small.gain { color: #9fd0ff; }
+
+.overlay .hangar { margin: 4px 0 8px; font-size: 13px; color: #9fd0ff; }

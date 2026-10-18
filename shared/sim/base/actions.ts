@@ -9,8 +9,8 @@ import { BUILDABLE, type Base } from './base';
 // 服务器收到的是任意 JSON，所以先逐项检查字段，再交给 Base 的方法。
 
 export type BaseAction =
-  | { type: 'build'; defId: BaseBuildingId; x: number; y: number }
-  | { type: 'move'; uid: number; x: number; y: number }
+  | { type: 'build'; defId: BaseBuildingId; x: number; y: number; rot?: 0 | 1 }
+  | { type: 'move'; uid: number; x: number; y: number; rot?: 0 | 1 }
   | { type: 'demolish'; uid: number }
   | { type: 'upgrade'; uid: number }
   | { type: 'moveTroops'; moves: { defId: DefId; i: number; x: number; y: number }[] }
@@ -23,17 +23,24 @@ export type BaseAction =
 export const MAX_TAX = 0.5;
 
 const int = (v: unknown): v is number => Number.isInteger(v);
+// 朝向：没给是 0，只能是 0 或 1
+const rotOf = (v: unknown): 0 | 1 | null => (v === undefined || v === 0 ? 0 : v === 1 ? 1 : null);
 
 // 字段不对返回 null
 export function parseAction(raw: unknown): BaseAction | null {
   if (!raw || typeof raw !== 'object') return null;
   const a = raw as Record<string, unknown>;
   switch (a.type) {
-    case 'build':
-      return typeof a.defId === 'string' && (BUILDABLE as string[]).includes(a.defId) && int(a.x) && int(a.y)
-        ? { type: 'build', defId: a.defId as BaseBuildingId, x: a.x, y: a.y } : null;
-    case 'move':
-      return int(a.uid) && int(a.x) && int(a.y) ? { type: 'move', uid: a.uid, x: a.x, y: a.y } : null;
+    case 'build': {
+      const rot = rotOf(a.rot);
+      return typeof a.defId === 'string' && (BUILDABLE as string[]).includes(a.defId) && int(a.x) && int(a.y) && rot !== null
+        ? { type: 'build', defId: a.defId as BaseBuildingId, x: a.x, y: a.y, rot } : null;
+    }
+    case 'move': {
+      // 移动时不给朝向就保持原来的
+      const rot = a.rot === undefined ? undefined : rotOf(a.rot);
+      return int(a.uid) && int(a.x) && int(a.y) && rot !== null ? { type: 'move', uid: a.uid, x: a.x, y: a.y, rot } : null;
+    }
     case 'demolish':
       return int(a.uid) ? { type: 'demolish', uid: a.uid } : null;
     case 'upgrade':
@@ -66,10 +73,10 @@ export function applyAction(base: Base, a: BaseAction): true | string {
   switch (a.type) {
     case 'build': {
       if (!(a.defId in BASE_BUILDINGS)) return '没有这种建筑';
-      const r = base.build(a.defId, a.x, a.y);
+      const r = base.build(a.defId, a.x, a.y, a.rot ?? 0);
       return typeof r === 'string' ? r : true;
     }
-    case 'move': return base.move(a.uid, a.x, a.y);
+    case 'move': return base.move(a.uid, a.x, a.y, a.rot);
     case 'demolish': return base.demolish(a.uid);
     case 'upgrade': return base.upgrade(a.uid);
     case 'moveTroops': return base.moveTroops(a.moves);

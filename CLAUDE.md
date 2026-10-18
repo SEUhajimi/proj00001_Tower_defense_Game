@@ -21,7 +21,7 @@
 | `npm run typecheck` | 类型检查 |
 | `npm run build` | 类型检查 + 打包前端 |
 | `python art/fetch_textures.py` | 下载渲染用的 CC0 贴图到 `art/textures/`（不进 git） |
-| `E:/tools/blender/blender.exe -b -P art/render.py -- <任务>` | 渲染美术，任务见 render.py 的 JOBS（`all`、`ground`、`barracks`、`tank1`…`bomber4`、`rifle`、`preview`） |
+| `E:/tools/blender/blender.exe -b -P art/render.py -- <任务>` | 渲染美术，任务见 render.py 的 JOBS（`all`、`ground`、各建筑名如 `hall`（能升级的建筑出 1–5 级各一张，带受损图）、`airfield`（两个朝向 × 5 级）、`tank1`…`bomber4`、`rifle` `smg` `mg` `sniper` `sapper`、树丛 `trees-0`…`trees-3`、石堆 `rocks-0`…`rocks-3`、不能升级的建筑只出受损图 `damaged` 或 `barracks-damaged`、废墟 `ruins`、特效 `explosion` `smoke` `fire` `flash`、资源图标 `icons`；检查用 `preview` `bpreview` `spreview` `afpreview` `lpreview`（各建筑 1–5 级快速图）） |
 
 改完代码至少跑 `npx tsc --noEmit` 和 `npx vitest run`；动到画面的，用浏览器自动化（playwright-core 驱动本机 Chrome）截图看一眼。
 
@@ -34,9 +34,9 @@
 | `server/` | 后端：账号（auth.ts）、存档和基地操作、出击结算（game.ts）、接口（app.ts）、SQLite（db.ts） |
 | `src/game/` | Phaser 场景：BootScene（加载美术）、BaseScene（基地）、WorldScene（世界地图）、BattleScene（战斗） |
 | `src/ui/` | 盖在画面上的界面：baseUi（基地）、worldHud（世界地图）、hud（战斗右侧栏）、login |
-| `art/` | Blender 建模渲染脚本：kit.py（通用工具）、vehicles.py（坦克飞机）、render.py（入口） |
+| `art/` | Blender 建模渲染脚本：kit.py（通用工具）、vehicles.py（坦克飞机）、buildings.py（兵营、战车工厂、机场、塔、工事、敌方建筑）、levels.py（能升级的建筑，每级一个样子）、props.py（树木岩石）、icons.py（资源图标）、damage.py（受损和废墟）、fx.py（爆炸烟火）、render.py（入口） |
 | `public/assets/rendered/` | 渲染出的图片和 manifest.json（尺寸、锚点） |
-| `public/assets/kenney/` | 还没渲染的部分先用 Kenney CC0 素材顶着 |
+| `public/assets/kenney/` | 早期的 Kenney CC0 素材，现在只在渲染图缺失时顶上 |
 
 ## 关键约定
 

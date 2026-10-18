@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
-import { baseDef, type BaseBuildingId } from '../../shared/data/economy';
+import { baseDef, footprint, type BaseBuildingId } from '../../shared/data/economy';
 import { DEFS, type DefId } from '../../shared/data/units';
 import { defenseRange } from '../../shared/data/economy';
-import { Base, levelOf, type PlacedBuilding } from '../../shared/sim/base/base';
+import { Base, footprintOf, levelOf, type PlacedBuilding } from '../../shared/sim/base/base';
 import { advanceTo } from '../../shared/sim/base/economy';
 import { PLOT_SIZE, REGION_PLOTS } from '../../shared/sim/base/terrain';
 import type { Roster } from '../../shared/sim/world/sortie';
@@ -25,6 +25,7 @@ export class BaseScene extends Phaser.Scene {
   mode: BaseMode = 'idle';
   tool: BaseBuildingId | null = null;
   selected: number | null = null; // 选中的自家建筑 uid
+  rot: 0 | 1 = 0; // 建造、移动长方形建筑（机场）时的朝向，R 键切换
   offline: { hours: number; gained: Record<string, number> } | null = null;
   message = '';
   troops!: BaseTroops; // 基地里的部队
@@ -103,6 +104,8 @@ export class BaseScene extends Phaser.Scene {
   setMode(mode: BaseMode, tool: BaseBuildingId | null = null): void {
     this.mode = mode;
     this.tool = tool;
+    // 建造从横放开始；移动沿用建筑原来的朝向
+    this.rot = mode === 'move' ? this.selectedBuilding()?.rot ?? 0 : 0;
     if (mode !== 'move') this.message = '';
     this.drawFog();
     this.drawPlan();
@@ -112,6 +115,18 @@ export class BaseScene extends Phaser.Scene {
   selectBuild(id: BaseBuildingId): void {
     if (this.mode === 'build' && this.tool === id) this.setMode('idle');
     else { this.selected = null; this.setMode('build', id); }
+  }
+
+  // 正在放的建筑能不能转向（只有长方形的能）
+  canRotate(): boolean {
+    const id = this.mode === 'build' ? this.tool : this.mode === 'move' ? this.selectedBuilding()?.defId : null;
+    return !!id && !!baseDef(id).rect;
+  }
+
+  rotate(): void {
+    if (!this.canRotate()) return;
+    this.rot = this.rot ? 0 : 1;
+    this.hud.render();
   }
 
   startMove(): void {
@@ -281,8 +296,8 @@ export class BaseScene extends Phaser.Scene {
     for (const b of this.base.state.buildings) {
       alive.add(b.uid);
       let s = this.sprites.get(b.uid);
-      if (!s) { s = buildingSprite(this, b.defId, b.x, b.y); this.sprites.set(b.uid, s); }
-      placeSprite(s, baseDef(b.defId).size, b.x, b.y);
+      if (!s) { s = buildingSprite(this, b); this.sprites.set(b.uid, s); }
+      placeSprite(s, b);
       // 屋顶上的字后面标等级
       const label = baseDef(b.defId).icon + (levelOf(b) > 1 ? levelOf(b) : '');
       if (s.label.text !== label) s.label.setText(label);
@@ -313,7 +328,7 @@ export class BaseScene extends Phaser.Scene {
     }
     for (const b of this.base.state.buildings) {
       const moving = this.mode === 'move' && b.uid === this.selected;
-      const d = pointsOf(footprintDiamond(b.x, b.y, baseDef(b.defId).size));
+      const f = footprintOf(b), d = pointsOf(footprintDiamond(b.x, b.y, f.w, f.h));
       g.fillStyle(moving ? 0xffe14a : 0x5fb0ff, moving ? 0.15 : 0.22);
       g.fillPoints(d, true);
       g.lineStyle(2, moving ? 0xffe14a : 0x8fd0ff, 0.9);
@@ -328,7 +343,8 @@ export class BaseScene extends Phaser.Scene {
     const sel = this.selectedBuilding();
     if (sel) {
       g.lineStyle(2, 0xffe14a, 1);
-      g.strokePoints(pointsOf(footprintDiamond(sel.x, sel.y, baseDef(sel.defId).size)), true);
+      const f = footprintOf(sel);
+      g.strokePoints(pointsOf(footprintDiamond(sel.x, sel.y, f.w, f.h)), true);
       // 选中的塔：画出射程
       if (this.mode === 'idle') this.drawRange(g, sel.defId, sel.x, sel.y);
     }
@@ -339,7 +355,7 @@ export class BaseScene extends Phaser.Scene {
     if (this.mode === 'build' || this.mode === 'move') {
       if (!spot) return;
       g.fillStyle(spot.ok === true ? 0x7dff8a : 0xff4040, 0.45);
-      g.fillPoints(pointsOf(footprintDiamond(spot.x, spot.y, spot.size)), true);
+      g.fillPoints(pointsOf(footprintDiamond(spot.x, spot.y, spot.w, spot.h)), true);
       const id = this.mode === 'build' ? this.tool : sel?.defId;
       if (id) this.drawRange(g, id, spot.x, spot.y);
     } else if (this.mode === 'buyLand') {
@@ -366,11 +382,11 @@ export class BaseScene extends Phaser.Scene {
   }
 
   // 放建筑、移动建筑时，挡住预览位置的建筑和树木变半透明，看得见下面的格子
-  private fadeCovering(spot: { x: number; y: number; size: number } | null): void {
+  private fadeCovering(spot: { x: number; y: number; w: number; h: number } | null): void {
     let rect: Phaser.Geom.Rectangle | null = null;
     if (spot) {
-      const top = toScreen(spot.x, spot.y), bottom = toScreen(spot.x + spot.size, spot.y + spot.size);
-      const left = toScreen(spot.x, spot.y + spot.size), right = toScreen(spot.x + spot.size, spot.y);
+      const top = toScreen(spot.x, spot.y), bottom = toScreen(spot.x + spot.w, spot.y + spot.h);
+      const left = toScreen(spot.x, spot.y + spot.h), right = toScreen(spot.x + spot.w, spot.y);
       rect = new Phaser.Geom.Rectangle(left.sx, top.sy, right.sx - left.sx, bottom.sy - top.sy);
     }
     for (const b of this.base.state.buildings) {
@@ -388,17 +404,17 @@ export class BaseScene extends Phaser.Scene {
   }
 
   // 预览的占地：鼠标在占地中间
-  private ghostSpot(): { x: number; y: number; size: number; ok: true | string } | null {
+  private ghostSpot(): { x: number; y: number; w: number; h: number; ok: true | string } | null {
     const h = this.hover;
     if (!h) return null;
     if (this.mode === 'build' && this.tool) {
-      const size = baseDef(this.tool).size, x = h.x - Math.floor((size - 1) / 2), y = h.y - Math.floor((size - 1) / 2);
-      return { x, y, size, ok: this.base.canBuild(this.tool, x, y) };
+      const f = footprint(this.tool, this.rot), x = h.x - Math.floor((f.w - 1) / 2), y = h.y - Math.floor((f.h - 1) / 2);
+      return { x, y, ...f, ok: this.base.canBuild(this.tool, x, y, this.rot) };
     }
     const sel = this.selectedBuilding();
     if (this.mode === 'move' && sel) {
-      const size = baseDef(sel.defId).size, x = h.x - Math.floor((size - 1) / 2), y = h.y - Math.floor((size - 1) / 2);
-      return { x, y, size, ok: this.base.fits(sel.defId, x, y, sel.uid) };
+      const f = footprint(sel.defId, this.rot), x = h.x - Math.floor((f.w - 1) / 2), y = h.y - Math.floor((f.h - 1) / 2);
+      return { x, y, ...f, ok: this.base.fits(sel.defId, x, y, sel.uid, this.rot) };
     }
     return null;
   }
@@ -429,6 +445,7 @@ export class BaseScene extends Phaser.Scene {
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT') as typeof this.keys;
     kb.on('keydown-ESC', () => { this.selected = null; this.troops.clear(); this.setMode('idle'); this.hud.onSelect(); });
+    kb.on('keydown-R', () => this.rotate());
 
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       const w = toWorld(p.worldX, p.worldY);
@@ -503,7 +520,7 @@ export class BaseScene extends Phaser.Scene {
   private click(tx: number, ty: number, shift: boolean): void {
     if (this.mode === 'build' && this.tool) {
       const spot = this.ghostSpot()!;
-      const r = act({ type: 'build', defId: this.tool, x: spot.x, y: spot.y });
+      const r = act({ type: 'build', defId: this.tool, x: spot.x, y: spot.y, rot: this.rot });
       this.message = typeof r === 'string' ? r : '';
       if (typeof r !== 'string') {
         this.syncBuildings();
@@ -512,7 +529,7 @@ export class BaseScene extends Phaser.Scene {
       this.hud.render();
     } else if (this.mode === 'move' && this.selected !== null) {
       const spot = this.ghostSpot()!;
-      const r = act({ type: 'move', uid: this.selected, x: spot.x, y: spot.y });
+      const r = act({ type: 'move', uid: this.selected, x: spot.x, y: spot.y, rot: this.rot });
       this.message = r === true ? '' : r;
       if (r === true) this.setMode('idle');
       this.syncBuildings();
