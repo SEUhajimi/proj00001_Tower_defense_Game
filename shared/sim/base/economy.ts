@@ -2,8 +2,9 @@ import {
   baseDef, BASE_BUILDINGS, POP_GROWTH_RATE, RESOURCES, TAX_PER_PERSON,
   type BaseBuildingId, type ResourceId,
 } from '../../data/economy';
+import { aiRates, TRIBUTE_POP_PER_LEVEL, TRIBUTE_SHARE } from '../../data/ai';
 import { advanceAi } from '../world/ai';
-import { Base } from './base';
+import { Base, levelOf } from './base';
 
 const MS_PER_HOUR = 3600_000;
 const STEP_MS = 60_000; // 结算步长 1 分钟：仓库满、原料断供都能在一分钟内反映出来
@@ -28,10 +29,10 @@ export interface PowerInfo {
 export function powerInfo(base: Base): PowerInfo {
   let supply = 0, demand = 0;
   for (const b of base.state.buildings) {
-    const d = baseDef(b.defId);
-    if ((d.power ?? 0) > 0) supply += d.power!;
-    if ((d.power ?? 0) < 0) demand -= d.power!;
-    if (d.fuelBoost && base.state.res.fuel > 0) supply += d.fuelBoost.power;
+    const d = baseDef(b.defId), k = levelOf(b);
+    if ((d.power ?? 0) > 0) supply += d.power! * k;
+    if ((d.power ?? 0) < 0) demand -= d.power! * k;
+    if (d.fuelBoost && base.state.res.fuel > 0) supply += d.fuelBoost.power * k;
   }
   return { supply, demand, efficiency: demand <= 0 ? 1 : Math.min(1, supply / demand) };
 }
@@ -39,14 +40,15 @@ export function powerInfo(base: Base): PowerInfo {
 // 结算一段时间（小时）。调用方保证 hours 不超过一个步长。
 export function step(base: Base, hours: number): void {
   const s = base.state, res = s.res, cap = base.storageCap();
-  const defs = s.buildings.map(b => baseDef(b.defId));
+  // 每座建筑的效果都乘以它的等级
+  const defs = s.buildings.map(b => ({ d: baseDef(b.defId), k: levelOf(b) }));
 
   // 电力：发电厂有燃油就多发电
   let supply = 0, demand = 0, fuelWant = 0, boost = 0;
-  for (const d of defs) {
-    if ((d.power ?? 0) > 0) supply += d.power!;
-    if ((d.power ?? 0) < 0) demand -= d.power!;
-    if (d.fuelBoost) { fuelWant += d.fuelBoost.fuel * hours; boost += d.fuelBoost.power; }
+  for (const { d, k } of defs) {
+    if ((d.power ?? 0) > 0) supply += d.power! * k;
+    if ((d.power ?? 0) < 0) demand -= d.power! * k;
+    if (d.fuelBoost) { fuelWant += d.fuelBoost.fuel * k * hours; boost += d.fuelBoost.power * k; }
   }
   const fuelFrac = fuelWant > 0 ? Math.min(1, res.fuel / fuelWant) : 0;
   res.fuel -= fuelWant * fuelFrac;
@@ -57,24 +59,31 @@ export function step(base: Base, hours: number): void {
   // 生产：受电力、原料、仓库空间三者中最紧的那个限制
   const producers = [...s.buildings].sort((a, b) => rank(a.defId) - rank(b.defId));
   for (const b of producers) {
-    const d = baseDef(b.defId);
+    const d = baseDef(b.defId), k = levelOf(b);
     if (!d.produces) continue;
     let f = powered(d.power);
     for (const r of RESOURCES) {
-      const need = (d.consumes?.[r] ?? 0) * hours;
+      const need = (d.consumes?.[r] ?? 0) * k * hours;
       if (need > 0) f = Math.min(f, res[r] / need);
-      const out = (d.produces[r] ?? 0) * hours;
+      const out = (d.produces[r] ?? 0) * k * hours;
       if (out > 0) f = Math.min(f, Math.max(0, cap[r] - res[r]) / out);
     }
     if (f <= 0) continue;
     for (const r of RESOURCES) {
-      res[r] -= (d.consumes?.[r] ?? 0) * hours * f;
-      res[r] += (d.produces[r] ?? 0) * hours * f;
+      res[r] -= (d.consumes?.[r] ?? 0) * k * hours * f;
+      res[r] += (d.produces[r] ?? 0) * k * hours * f;
     }
   }
 
   // 税收
   res.gold = Math.min(cap.gold, res.gold + s.pop * TAX_PER_PERSON * s.taxRate * hours);
+
+  // 附属据点上交产量的一部分（仓库放不下的作废）
+  const vassals = base.vassals();
+  for (const v of vassals) {
+    const rates = aiRates(v.level);
+    for (const r of RESOURCES) res[r] = Math.min(cap[r], res[r] + rates[r] * TRIBUTE_SHARE * hours);
+  }
 
   // 部队口粮
   res.food = Math.max(0, res.food - base.armyFood() * hours);
@@ -85,10 +94,13 @@ export function step(base: Base, hours: number): void {
   else {
     const g = POP_GROWTH_RATE * Math.max(0, 1 - 1.5 * s.taxRate);
     s.pop += (room - s.pop) * (1 - Math.exp(-g * hours));
+    // 附属据点送来的市民，同样受住房限制
+    const sent = vassals.reduce((n, v) => n + v.level * TRIBUTE_POP_PER_LEVEL, 0) * hours;
+    s.pop = Math.min(room, s.pop + sent);
   }
 
   // 科研
-  for (const d of defs) s.research += (d.research ?? 0) * powered(d.power) * hours;
+  for (const { d, k } of defs) s.research += (d.research ?? 0) * k * powered(d.power) * hours;
 
   // 拆了仓库导致超出容量的部分作废
   for (const r of RESOURCES) res[r] = Math.max(0, Math.min(cap[r], res[r]));

@@ -75,7 +75,7 @@ export async function loadSession(): Promise<string | null> {
 let pending = 0;
 
 export function act(action: BaseAction): true | string {
-  const local = applyAction(session().base, action, action.type === 'annex' ? action.aiId : null);
+  const local = applyAction(session().base, action);
   if (local !== true) return local;
   pending++;
   void api<{ state: BaseState; error?: string }>('base/action', { action }).then(r => {

@@ -12,12 +12,12 @@ export type BaseAction =
   | { type: 'build'; defId: BaseBuildingId; x: number; y: number }
   | { type: 'move'; uid: number; x: number; y: number }
   | { type: 'demolish'; uid: number }
+  | { type: 'upgrade'; uid: number }
   | { type: 'buyPlot'; plot: number }
   | { type: 'recruit'; defId: DefId; n: number }
   | { type: 'repairAll' }
   | { type: 'research'; defId: DefId }
-  | { type: 'setTax'; rate: number }
-  | { type: 'annex'; aiId: number };
+  | { type: 'setTax'; rate: number };
 
 export const MAX_TAX = 0.5;
 
@@ -35,6 +35,8 @@ export function parseAction(raw: unknown): BaseAction | null {
       return int(a.uid) && int(a.x) && int(a.y) ? { type: 'move', uid: a.uid, x: a.x, y: a.y } : null;
     case 'demolish':
       return int(a.uid) ? { type: 'demolish', uid: a.uid } : null;
+    case 'upgrade':
+      return int(a.uid) ? { type: 'upgrade', uid: a.uid } : null;
     case 'buyPlot':
       return int(a.plot) ? { type: 'buyPlot', plot: a.plot } : null;
     case 'recruit':
@@ -47,14 +49,11 @@ export function parseAction(raw: unknown): BaseAction | null {
         ? { type: 'research', defId: a.defId as DefId } : null;
     case 'setTax':
       return typeof a.rate === 'number' && a.rate >= 0 && a.rate <= MAX_TAX ? { type: 'setTax', rate: a.rate } : null;
-    case 'annex':
-      return int(a.aiId) ? { type: 'annex', aiId: a.aiId } : null;
   }
   return null;
 }
 
-// 执行操作；吞并要先打赢，由调用方告诉它刚打赢的是哪个 AI 基地
-export function applyAction(base: Base, a: BaseAction, annexable: number | null = null): true | string {
+export function applyAction(base: Base, a: BaseAction): true | string {
   switch (a.type) {
     case 'build': {
       if (!(a.defId in BASE_BUILDINGS)) return '没有这种建筑';
@@ -63,6 +62,7 @@ export function applyAction(base: Base, a: BaseAction, annexable: number | null 
     }
     case 'move': return base.move(a.uid, a.x, a.y);
     case 'demolish': return base.demolish(a.uid);
+    case 'upgrade': return base.upgrade(a.uid);
     case 'buyPlot': return base.buyPlot(a.plot);
     case 'recruit': return base.recruit(a.defId, a.n);
     case 'repairAll': return base.repairAll();
@@ -70,11 +70,5 @@ export function applyAction(base: Base, a: BaseAction, annexable: number | null 
     case 'setTax':
       base.state.taxRate = a.rate;
       return true;
-    case 'annex': {
-      const ai = base.getAi(a.aiId);
-      if (!ai) return '没有这个 AI 基地';
-      if (annexable !== a.aiId) return '必须先打赢这个基地，在胜利结算时吞并';
-      return base.annex(ai);
-    }
   }
 }

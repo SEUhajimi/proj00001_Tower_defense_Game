@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { AI_LEVELS, AI_SPAWN } from '../shared/data/ai';
+import { AI_LEVELS, aiRates, MAP_H, MAP_W, RECOVER_HOURS, STRONGHOLD_COUNT, TRIBUTE_SHARE } from '../shared/data/ai';
 import { START_ARMY, TRAINING } from '../shared/data/army';
 import { HALL_STORAGE } from '../shared/data/economy';
 import { DEFS } from '../shared/data/units';
 import { Base, newBaseState } from '../shared/sim/base/base';
-import { step } from '../shared/sim/base/economy';
-import { REGION_PLOTS, START_PLOT } from '../shared/sim/base/terrain';
+import { advanceTo, step } from '../shared/sim/base/economy';
 import { autoDeploy } from '../shared/sim/deploy';
-import { aiPlots, aiRect, generateAiLayout, isProtected, type AiBase } from '../shared/sim/world/ai';
+import {
+  advanceAi, attackable, defenseLeft, generateAiLayout, HOME_ID, slotKey, type AiBase,
+} from '../shared/sim/world/ai';
 import { canSortie, createAiBattle, DROP_RING, settleSortie } from '../shared/sim/world/sortie';
 
 const T0 = 1_700_000_000_000;
@@ -17,44 +18,68 @@ function fresh(seed = 7): Base {
   return new Base(newBaseState(seed, T0));
 }
 
-function overlap(a: AiBase, b: { px: number; py: number; s: number }, margin = 0): boolean {
-  const s = aiPlots(a);
-  return a.px < b.px + b.s + margin && b.px < a.px + s + margin && a.py < b.py + b.s + margin && b.py < a.py + s + margin;
+// 和主基地直接相连的一个据点
+function nearby(b: Base): AiBase {
+  return b.state.ai.find(a => a.links.includes(HOME_ID))!;
 }
 
 describe('世界地图', () => {
-  it('AI 基地按设定数量生成，互不重叠，不贴着玩家开局领地', () => {
+  it('据点数量对、都在地图里、彼此不太近', () => {
     for (const seed of [1, 2, 3, 4, 5]) {
       const ai = fresh(seed).state.ai;
-      expect(ai.length).toBe(AI_SPAWN.reduce((n, [, c]) => n + c, 0));
+      expect(ai.length).toBe(STRONGHOLD_COUNT);
       for (const a of ai) {
-        expect(a.px).toBeGreaterThanOrEqual(0);
-        expect(a.px + aiPlots(a)).toBeLessThanOrEqual(REGION_PLOTS);
-        expect(overlap(a, { px: START_PLOT.x0, py: START_PLOT.y0, s: START_PLOT.size }, 2)).toBe(false);
-        for (const b of ai) if (a !== b) expect(overlap(a, { px: b.px, py: b.py, s: aiPlots(b) })).toBe(false);
+        expect(a.x).toBeGreaterThan(0);
+        expect(a.x).toBeLessThan(MAP_W);
+        expect(a.y).toBeGreaterThan(0);
+        expect(a.y).toBeLessThan(MAP_H);
+        for (const o of ai) if (o !== a) expect(Math.hypot(a.x - o.x, a.y - o.y)).toBeGreaterThan(40);
       }
     }
   });
 
-  it('等级越高离玩家越远', () => {
-    const ai = fresh().state.ai;
-    const dist = (a: AiBase) => Math.hypot(a.px + aiPlots(a) / 2 - 19.5, a.py + aiPlots(a) / 2 - 19.5);
-    const avg = (lv: number) => {
-      const xs = ai.filter(a => a.level === lv).map(dist);
-      return xs.reduce((s, d) => s + d, 0) / xs.length;
-    };
-    expect(avg(1)).toBeLessThan(avg(3));
-    expect(avg(3)).toBeLessThan(avg(6));
+  it('道路双向、全图连通、每个据点 1–4 条路；主基地至少 2 条', () => {
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const ai = fresh(seed).state.ai;
+      const home = ai.filter(a => a.links.includes(HOME_ID)).length;
+      expect(home).toBeGreaterThanOrEqual(2);
+      for (const a of ai) {
+        expect(a.links.length).toBeGreaterThanOrEqual(1);
+        expect(a.links.length).toBeLessThanOrEqual(4);
+        for (const to of a.links) if (to !== HOME_ID) expect(ai.find(o => o.id === to)!.links).toContain(a.id);
+      }
+      const reached = new Set([HOME_ID]);
+      for (let changed = true; changed;) {
+        changed = false;
+        for (const a of ai) if (!reached.has(a.id) && a.links.some(l => reached.has(l))) { reached.add(a.id); changed = true; }
+      }
+      expect(reached.size).toBe(ai.length + 1);
+    }
   });
 
-  it('不能买 AI 基地的地', () => {
+  it('等级按离主基地几段路排开（1–6 级都有）；开局只能打和主基地相连的', () => {
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const levels = new Set(fresh(seed).state.ai.map(a => a.level));
+      expect(levels.has(1) && levels.has(6)).toBe(true);
+    }
     const b = fresh();
-    const ai = b.state.ai[0];
-    expect(b.canBuyPlot(ai.py * REGION_PLOTS + ai.px)).toBe('这是 AI 基地的领地，打下来才能吞并');
+    for (const a of b.state.ai) {
+      if (a.links.includes(HOME_ID)) {
+        expect(a.level).toBe(1);
+        expect(attackable(a, b.state.ai)).toBe(true);
+      } else {
+        expect(a.level).toBeGreaterThan(1);
+        expect(attackable(a, b.state.ai)).toBe(false);
+      }
+    }
+  });
+
+  it('同一个种子生成同一张地图', () => {
+    expect(fresh(9).state.ai).toEqual(fresh(9).state.ai);
   });
 });
 
-describe('AI 基地布局', () => {
+describe('据点布局', () => {
   it('同一个种子每次生成一样；有指挥部，建筑不重叠，数量与等级相符', () => {
     for (const ai of fresh().state.ai) {
       const a = generateAiLayout(ai), b = generateAiLayout(ai);
@@ -77,35 +102,30 @@ describe('AI 基地布局', () => {
 });
 
 describe('出击', () => {
-  function level1(b: Base): AiBase {
-    return b.state.ai.find(a => a.level === 1)!;
-  }
-
-  it('战场 = AI 基地 + 一圈投送区，敌方建筑和驻军都在', () => {
-    const b = fresh(), ai = level1(b);
+  it('战场 = 据点布局 + 一圈投送区，敌方建筑和驻军都在', () => {
+    const b = fresh(), ai = nearby(b);
     const fight = createAiBattle(ai, { rifle: 2 }, 1);
-    expect(fight.mapSize).toBe(aiRect(ai).size + DROP_RING * 2);
     const layout = generateAiLayout(ai);
+    expect(fight.mapSize).toBe(layout.size + DROP_RING * 2);
     const enemyBuildings = fight.battle.living('enemy').filter(e => e.def.size > 0).length;
     expect(enemyBuildings).toBe(layout.buildings.length);
     expect(fight.deployment.canPlace('rifle', 0, 0)).toBe(true);
     expect(fight.deployment.canPlace('rifle', DROP_RING + 1, DROP_RING + 1)).toBe('只能部署在敌方基地外圈的投送区');
   });
 
-  it('出击前检查：兵力、免战、粮食', () => {
-    const b = fresh(), ai = level1(b);
-    expect(canSortie(b, ai, {}, T0)).toBe('没有选择部队');
-    expect(canSortie(b, ai, { rifle: 99 }, T0)).toBe('选择的部队超过现有兵力');
-    expect(canSortie(b, ai, { rifle: 2 }, T0)).toBe(true);
+  it('出击前检查：道路、兵力、粮食', () => {
+    const b = fresh(), ai = nearby(b);
+    const far = b.state.ai.find(a => !attackable(a, b.state.ai))!;
+    expect(canSortie(b, far, { rifle: 2 })).toBe('没有道路通到这里，先拿下和它相连的据点');
+    expect(canSortie(b, ai, {})).toBe('没有选择部队');
+    expect(canSortie(b, ai, { rifle: 99 })).toBe('选择的部队超过现有兵力');
+    expect(canSortie(b, ai, { rifle: 2 })).toBe(true);
     b.state.res.food = 0;
-    expect(canSortie(b, ai, { rifle: 2 }, T0)).toBe('粮食耗尽，部队无法出击');
-    b.state.res.food = 100;
-    ai.protectedUntil = T0 + HOUR;
-    expect(canSortie(b, ai, { rifle: 2 }, T0)).toMatch(/免战/);
+    expect(canSortie(b, ai, { rifle: 2 })).toBe('粮食耗尽，部队无法出击');
   });
 
   it('结算：阵亡 + 伤员 + 完好回来 = 派出的；没上场的原样回来', () => {
-    const b = fresh(), ai = level1(b);
+    const b = fresh(), ai = nearby(b);
     b.state.army = { tank2: 6, rifle: 6, sapper: 4 };
     const sent = { tank2: 6, rifle: 6, sapper: 4 };
     const fight = createAiBattle(ai, sent, 3);
@@ -122,8 +142,8 @@ describe('出击', () => {
     expect(report.outcome).toMatch(/victory|defeat/);
   });
 
-  it('胜利掠夺对方 50%，仓库放不下的作废；对方进入 24 小时免战', () => {
-    const b = fresh(), ai = level1(b);
+  it('胜利掠夺对方 50%，仓库放不下的作废', () => {
+    const b = fresh(), ai = nearby(b);
     const before = { ...ai.res };
     b.state.res.wood = HALL_STORAGE.wood - 10;
     const { loot, kept } = b.loot(ai, T0);
@@ -131,12 +151,10 @@ describe('出击', () => {
     expect(ai.res.gold).toBe(before.gold - loot.gold);
     expect(kept.wood).toBe(10);
     expect(b.state.res.wood).toBe(HALL_STORAGE.wood);
-    expect(isProtected(ai, T0 + 23 * HOUR)).toBe(true);
-    expect(isProtected(ai, T0 + 25 * HOUR)).toBe(false);
   });
 
   it('撤退拿不到掠夺', () => {
-    const b = fresh(), ai = level1(b);
+    const b = fresh(), ai = nearby(b);
     const fight = createAiBattle(ai, { rifle: 2 }, 1);
     fight.deployment.place('rifle', 0, 0, 'hold');
     fight.battle.start();
@@ -147,6 +165,75 @@ describe('出击', () => {
     expect(report.loot).toBeNull();
     expect(b.state.res.gold).toBe(gold);
     expect(b.state.army.rifle).toBe(START_ARMY.rifle);
+  });
+});
+
+describe('征服', () => {
+  it('打掉的守军和防御记下来，下次战场上就没有了；守备值跟着降', () => {
+    const b = fresh(), ai = nearby(b);
+    expect(defenseLeft(ai)).toBe(1);
+    const fight = createAiBattle(ai, { rifle: 1 }, 1);
+    fight.deployment.place('rifle', 0, 0, 'hold');
+    fight.battle.start();
+    // 直接把一座塔和一个驻军打死，模拟战斗中的损失
+    const tower = fight.battle.living('enemy').find(e => e.def.kind === 'tower')!;
+    const unit = fight.battle.living('enemy').find(e => e.def.kind === 'infantry' && e.inside === null)!;
+    tower.hp = 0;
+    unit.hp = 0;
+    fight.battle.step();
+    fight.battle.retreat();
+    const towersBefore = fight.battle.entities.filter(e => e.side === 'enemy' && e.def.kind === 'tower').length;
+    const r = settleSortie(b, ai, fight, { rifle: 1 }, T0);
+    expect(ai.lost).toContain(fight.slots.get(tower.id));
+    expect(ai.lost).toContain(fight.slots.get(unit.id));
+    expect(r.defenseAfter).toBeLessThan(r.defenseBefore);
+    const again = createAiBattle(ai, { rifle: 1 }, 2);
+    expect(again.battle.entities.filter(e => e.side === 'enemy' && e.def.kind === 'tower').length).toBe(towersBefore - 1);
+    expect(ai.owner).toBe('ai');
+  });
+
+  it('24 小时没再打，全部恢复', () => {
+    const b = fresh(), ai = nearby(b);
+    ai.lost = [slotKey.building(0)];
+    ai.lastAttack = T0;
+    advanceAi(ai, T0 + (RECOVER_HOURS - 1) * HOUR);
+    expect(ai.lost.length).toBe(1);
+    advanceAi(ai, T0 + (RECOVER_HOURS + 1) * HOUR);
+    expect(ai.lost.length).toBe(0);
+    expect(defenseLeft(ai)).toBe(1);
+  });
+
+  it('守备打光就征服，相连的据点随之可以进攻', () => {
+    const b = fresh(), ai = nearby(b);
+    b.state.army = { tank2: 8, sapper: 10, rifle: 8 };
+    const sent = { tank2: 8, sapper: 10, rifle: 8 };
+    const fight = createAiBattle(ai, sent, 5);
+    autoDeploy(fight.deployment, fight.hqCenter);
+    fight.battle.start();
+    // 把敌方守军和防御全部清掉（民用建筑、飞机不计入守备）
+    for (const e of fight.battle.entities) if (e.side === 'enemy' && e.def.kind !== 'civil' && e.def.armor !== 'air') e.hp = 0;
+    fight.battle.step();
+    const r = settleSortie(b, ai, fight, sent, T0);
+    expect(r.conquered).toBe(true);
+    expect(ai.owner).toBe('player');
+    const next = b.state.ai.find(a => a.links.includes(ai.id) && a.owner === 'ai');
+    if (next) expect(attackable(next, b.state.ai)).toBe(true);
+    expect(canSortie(b, ai, { rifle: 1 })).toBe('这个据点已经是你的了');
+  });
+
+  it('附属据点每小时上交产量的一半和市民，离线也照算', () => {
+    const b = fresh(), ai = nearby(b);
+    b.conquer(ai);
+    b.state.res.stone = 0;
+    b.state.pop = 0;
+    for (let i = 0; i < 60; i++) step(b, 1 / 60);
+    expect(b.state.res.stone).toBeCloseTo(aiRates(ai.level).stone * TRIBUTE_SHARE, 5);
+    expect(b.state.pop).toBeGreaterThan(ai.level * 2 - 0.01);
+    const c = fresh(), v = nearby(c);
+    c.conquer(v);
+    c.state.res.stone = 0;
+    advanceTo(c, T0 + 2 * HOUR);
+    expect(c.state.res.stone).toBeCloseTo(aiRates(v.level).stone * TRIBUTE_SHARE * 2, 3);
   });
 });
 
@@ -187,34 +274,11 @@ describe('征兵、维修、口粮', () => {
   });
 });
 
-describe('吞并', () => {
-  it('不相邻不能吞并；相邻时花钱吞并，地块和建筑归玩家，市政厅拆掉', () => {
-    const b = fresh();
-    const ai = b.state.ai.find(a => a.level === 1)!;
-    expect(b.canAnnex(ai)).toBe('只能吞并与领地相邻的基地');
-    // 直接把 AI 基地旁边的一块地划给玩家，模拟领地扩张到了它旁边
-    const nextTo = ai.py * REGION_PLOTS + ai.px - 1;
-    b.state.owned.push(nextTo);
-    const c = new Base(b.state);
-    const ai2 = c.getAi(ai.id)!;
-    c.state.res.gold = 10_000_000;
-    const cost = c.annexCost(ai2);
-    const buildings = c.state.buildings.length;
-    const layout = generateAiLayout(ai2);
-    expect(c.annex(ai2)).toBe(true);
-    expect(c.state.res.gold).toBe(10_000_000 - cost);
-    expect(c.getAi(ai.id)).toBeUndefined();
-    expect(c.ownsPlot(ai.py * REGION_PLOTS + ai.px)).toBe(true);
-    expect(c.state.buildings.length).toBe(buildings + layout.buildings.length - 1);
-    expect(c.state.buildings.filter(o => o.defId === 'hall').length).toBe(1);
-  });
-});
-
-describe('一级 AI 基地能打', () => {
-  it('二代坦克 + 爆破兵攻打一级基地能赢', () => {
+describe('一级据点能打', () => {
+  it('二代坦克 + 爆破兵攻打一级据点能赢', () => {
     let wins = 0;
     for (const seed of [1, 2, 3]) {
-      const b = fresh(seed), ai = b.state.ai.find(a => a.level === 1)!;
+      const b = fresh(seed), ai = nearby(b);
       const fight = createAiBattle(ai, { tank2: 4, sapper: 6, rifle: 6 }, seed);
       autoDeploy(fight.deployment, fight.hqCenter);
       fight.battle.start();
@@ -222,5 +286,22 @@ describe('一级 AI 基地能打', () => {
       if (fight.battle.outcome === 'victory') wins++;
     }
     expect(wins).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('军工建筑', () => {
+  it('征兵要有对应的建筑：步兵要兵营，坦克要战车工厂，飞机要飞机工厂', () => {
+    const b = fresh();
+    b.state.res.steel = 5000; b.state.res.fuel = 5000; b.state.res.stone = 5000; b.state.res.electronics = 500;
+    b.state.tech.push('tank1', 'fighter1');
+    expect(b.canRecruit('rifle')).toBe(true);
+    expect(b.canRecruit('tank1')).toBe('需要先建造战车工厂');
+    expect(b.canRecruit('fighter1')).toBe('需要先建造飞机工厂');
+    const barracks = b.state.buildings.find(o => o.defId === 'barracks')!;
+    expect(b.demolish(barracks.uid)).toBe(true);
+    expect(b.canRecruit('rifle')).toBe('需要先建造兵营');
+    const hall = b.state.buildings[0];
+    expect(b.build('tankFactory', hall.x + 4, hall.y)).not.toBeTypeOf('string');
+    expect(b.canRecruit('tank1')).toBe(true);
   });
 });

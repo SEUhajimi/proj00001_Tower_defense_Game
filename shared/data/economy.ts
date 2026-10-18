@@ -17,11 +17,6 @@ export const TERRAIN_NAME: Record<Terrain, string> = {
   plain: '平原', forest: '森林', mountain: '山地', iron: '铁矿脉', oil: '油田',
 };
 
-// 买地价格的地形系数（设计文档「买地价格」）
-export const TERRAIN_PRICE: Record<Terrain, number> = {
-  plain: 1, forest: 1.3, mountain: 1.3, iron: 2, oil: 2,
-};
-
 export type Ministry = 'tech' | 'finance' | 'civil' | 'defense';
 
 export const MINISTRY_NAME: Record<Ministry, string> = {
@@ -36,7 +31,6 @@ export interface BaseBuildingDef {
   color: number;
   desc: string;
   cost: Amounts;
-  terrain?: Terrain; // 采集建筑必须整块建在这种地形上
   produces?: Amounts;
   consumes?: Amounts;
   power?: number; // 正数发电，负数耗电
@@ -45,7 +39,9 @@ export interface BaseBuildingDef {
   popCap?: number;
   research?: number; // 科研点 / 小时
   battleDef?: DefId; // 防御建筑：被进攻时对应的战斗单位
+  factory?: boolean; // 军工建筑：在里面研发、生产对应的兵种（见 army.ts 的 FACTORY_UNITS）
   unique?: boolean; // 只能有一座，不能建造、移动以外的操作
+  upgradeCost?: Amounts; // 升级用的造价基数（没写就用 cost）；塔、工事、军工建筑不能升级
 }
 
 // 市政厅自带的基础容量和供电
@@ -61,6 +57,7 @@ const civil = {
   hall: {
     name: '市政厅', icon: '厅', ministry: 'finance', size: 3, color: 0xf4f6fa, unique: true,
     desc: '基地核心。自带基础仓储、10 点电力、30 人住房、每小时 5 科研点', cost: {},
+    upgradeCost: { gold: 1500, stone: 300, steel: 150 },
     power: 10, popCap: 30, research: 5,
   },
   house: {
@@ -72,8 +69,8 @@ const civil = {
     desc: '每小时 +60 金币', cost: { wood: 80, stone: 80, gold: 200 }, produces: { gold: 60 }, power: -1,
   },
   farm: {
-    name: '农场', icon: '农', ministry: 'civil', size: 3, color: 0x9bc95a, terrain: 'plain',
-    desc: '建在平原上，每小时 +100 粮食', cost: { wood: 50 }, produces: { food: 100 },
+    name: '农场', icon: '农', ministry: 'civil', size: 3, color: 0x9bc95a,
+    desc: '每小时 +100 粮食', cost: { wood: 50 }, produces: { food: 100 },
   },
   powerPlant: {
     name: '发电厂', icon: '电', ministry: 'civil', size: 2, color: 0x4f9fd6,
@@ -102,20 +99,20 @@ const tech = {
 
 const defense = {
   lumberMill: {
-    name: '伐木场', icon: '木', ministry: 'defense', size: 2, color: 0x6b8f3a, terrain: 'forest',
-    desc: '建在森林上，每小时 +80 木材', cost: { stone: 30, gold: 50 }, produces: { wood: 80 },
+    name: '伐木场', icon: '木', ministry: 'defense', size: 2, color: 0x6b8f3a,
+    desc: '每小时 +80 木材', cost: { stone: 30, gold: 50 }, produces: { wood: 80 },
   },
   quarry: {
-    name: '采石场', icon: '石', ministry: 'defense', size: 2, color: 0xa39882, terrain: 'mountain',
-    desc: '建在山地上，每小时 +60 石料', cost: { wood: 60, gold: 50 }, produces: { stone: 60 },
+    name: '采石场', icon: '石', ministry: 'defense', size: 2, color: 0xa39882,
+    desc: '每小时 +60 石料', cost: { wood: 60, gold: 50 }, produces: { stone: 60 },
   },
   mine: {
-    name: '矿井', icon: '矿', ministry: 'defense', size: 2, color: 0x9c5b45, terrain: 'iron',
-    desc: '建在铁矿脉上，每小时 +50 铁矿', cost: { wood: 80, stone: 60 }, produces: { iron: 50 }, power: -2,
+    name: '矿井', icon: '矿', ministry: 'defense', size: 2, color: 0x9c5b45,
+    desc: '每小时 +50 铁矿', cost: { wood: 80, stone: 60 }, produces: { iron: 50 }, power: -2,
   },
   oilWell: {
-    name: '油井', icon: '油', ministry: 'defense', size: 2, color: 0x3a3a46, terrain: 'oil',
-    desc: '建在油田上，每小时 +40 原油', cost: { stone: 40, steel: 60 }, produces: { oil: 40 }, power: -2,
+    name: '油井', icon: '油', ministry: 'defense', size: 2, color: 0x3a3a46,
+    desc: '每小时 +40 原油', cost: { stone: 40, steel: 60 }, produces: { oil: 40 }, power: -2,
   },
   steelMill: {
     name: '炼钢厂', icon: '钢', ministry: 'defense', size: 3, color: 0x7d8792,
@@ -152,6 +149,22 @@ const defense = {
   },
 } satisfies Record<string, BaseBuildingDef>;
 
+// 军工：生产部队的建筑。点进建筑里查看、研发、征召对应的兵种
+const military = {
+  barracks: {
+    name: '兵营', icon: '营', ministry: 'defense', size: 3, color: 0x7a8a5a,
+    desc: '训练步兵：步枪兵、冲锋枪兵、机枪兵、狙击兵、爆破兵', cost: { wood: 120, stone: 80 }, power: -2, factory: true,
+  },
+  tankFactory: {
+    name: '战车工厂', icon: '车', ministry: 'defense', size: 3, color: 0x6a6f5a,
+    desc: '制造坦克', cost: { stone: 200, steel: 150 }, power: -5, factory: true,
+  },
+  airfield: {
+    name: '飞机工厂', icon: '机', ministry: 'defense', size: 3, color: 0x5f6f7a,
+    desc: '制造战斗机和轰炸机', cost: { stone: 300, steel: 250, electronics: 10 }, power: -6, factory: true,
+  },
+} satisfies Record<string, BaseBuildingDef>;
+
 // 布防：塔和工事直接沿用战斗数值，造价也一样
 function defenseFromBattle(id: DefId, icon: string, color: number): BaseBuildingDef {
   const d = DEFS[id] as (typeof DEFS)[DefId] & { cost?: Amounts };
@@ -170,11 +183,26 @@ const fortifications = {
   bunker: defenseFromBattle('bunker', '堡', 0x8a939b),
 };
 
-export const BASE_BUILDINGS = { ...civil, ...finance, ...tech, ...defense, ...fortifications };
+export const BASE_BUILDINGS = { ...civil, ...finance, ...tech, ...defense, ...military, ...fortifications };
 export type BaseBuildingId = keyof typeof BASE_BUILDINGS;
 
 export function baseDef(id: BaseBuildingId): BaseBuildingDef {
   return BASE_BUILDINGS[id];
+}
+
+// 升级：同一块地上效果翻倍，省出地方布防。等级 n 的产量、原料、耗电、发电、容量、住房、科研都是 1 级的 n 倍。
+// 升到 n 级花 n 倍的造价基数；塔、工事和军工建筑不能升级
+export const MAX_LEVEL = 5;
+
+export function upgradable(id: BaseBuildingId): boolean {
+  const d = baseDef(id);
+  return !d.battleDef && !d.factory;
+}
+
+export function upgradeCost(id: BaseBuildingId, toLevel: number): Amounts {
+  const d = baseDef(id), base = d.upgradeCost ?? d.cost, out: Amounts = {};
+  for (const r of RESOURCES) if (base[r]) out[r] = base[r]! * toLevel;
+  return out;
 }
 
 export const START_RESOURCES: Record<ResourceId, number> = {

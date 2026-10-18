@@ -28,13 +28,18 @@ describe('存档', () => {
     expect(loaded.notice).toBeNull();
   });
 
-  it('v2 存档自动升级，科技从第一阶段开始', () => {
-    const { tech: _tech, ...rest } = newBaseState(7, T0);
-    const state = parseSave(JSON.stringify({ ...rest, version: 2 }));
-    expect(typeof state).not.toBe('string');
-    if (typeof state === 'string') return;
-    expect(state.version).toBe(3);
-    expect(state.tech).toEqual(START_TECH);
+  it('旧存档自动升级：v2 补上科技树，v2/v3 的 AI 基地换成据点', () => {
+    const { tech: _tech, ai: _ai, ...rest } = newBaseState(7, T0);
+    const oldAi = [{ id: 1, level: 1, px: 10, py: 10, seed: 5, res: {}, lastTick: T0, protectedUntil: 0 }];
+    for (const version of [2, 3]) {
+      const state = parseSave(JSON.stringify({ ...rest, tech: version === 3 ? ['rifle'] : undefined, ai: oldAi, version }));
+      expect(typeof state).not.toBe('string');
+      if (typeof state === 'string') return;
+      expect(state.version).toBe(4);
+      expect(state.tech).toEqual(version === 2 ? START_TECH : ['rifle']);
+      expect(state.ai.length).toBe(20);
+      expect(state.ai.every(a => Array.isArray(a.links) && a.owner === 'ai')).toBe(true);
+    }
   });
 
   it('主存档坏了就用备份恢复，坏的另外保留', () => {

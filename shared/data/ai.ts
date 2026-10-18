@@ -34,17 +34,22 @@ export const AI_ATTACK: Record<number, Partial<Record<DefId, number>>> = {
   6: { mg: 6, sniper: 4, sapper: 10, tank3: 3, tank4: 4, fighter5: 3, bomber4: 2 },
 };
 
-// 世界上 AI 基地的分布：[等级, 数量, 离玩家开局中心的最近、最远距离（地块）]
-export const AI_SPAWN: [number, number, number, number][] = [
-  [1, 4, 6, 10],
-  [2, 4, 7, 12],
-  [3, 3, 11, 16],
-  [4, 3, 12, 17],
-  [5, 2, 15, 19],
-  [6, 1, 15, 19],
+// 世界地图（战略图）：据点数量、地图大小（地图单位，只用来摆位置和画图）
+export const STRONGHOLD_COUNT = 20;
+export const MAP_W = 1000;
+export const MAP_H = 700;
+
+// 据点代号，按编号取
+export const STRONGHOLD_NAMES = [
+  '鹰巢', '铁砧', '黑石', '狼穴', '赤峰', '雷霆', '断桥', '沙丘', '寒林', '钢铁谷',
+  '风暴角', '灰烬', '北岭', '堡垒湾', '雪线', '红河', '石门', '烈焰', '孤峰', '暗礁',
 ];
 
-// 民用建筑的外观（对应基地建筑），都不需要特定地形，吞并后直接归玩家
+export function strongholdName(id: number): string {
+  return STRONGHOLD_NAMES[(id - 1) % STRONGHOLD_NAMES.length];
+}
+
+// 民用建筑的外观（对应基地建筑）
 export const AI_CIVIL_SKINS = ['house', 'market', 'warehouse', 'granary', 'vault', 'steelMill', 'arsenal', 'powerPlant'] as const;
 
 // 每小时产量；仓库容量 = 产量 × 24（一天的量）
@@ -63,4 +68,6 @@ export function aiRates(level: number): Record<ResourceId, number> {
 
 export const AI_STORAGE_HOURS = 24;
 export const LOOT_SHARE = 0.5;
-export const PROTECTION_HOURS = 24;
+export const RECOVER_HOURS = 24; // 最后一次进攻后这么久没再被打，守军和塔全部恢复
+export const TRIBUTE_SHARE = 0.5; // 附属据点每小时上交自己产量的这个比例
+export const TRIBUTE_POP_PER_LEVEL = 2; // 附属据点每小时送来 等级 × 这么多 名市民

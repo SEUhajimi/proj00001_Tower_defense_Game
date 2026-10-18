@@ -1,3 +1,4 @@
+import { strongholdName } from '../../shared/data/ai';
 import { DAMAGE_TYPE_NAME } from '../../shared/data/combat';
 import { RESOURCE_NAME, RESOURCES } from '../../shared/data/economy';
 import { DEFS, type DefId, type UnitDef } from '../../shared/data/units';
@@ -19,6 +20,7 @@ export class Hud {
 
   constructor(private scene: BattleScene) {
     this.root.addEventListener('click', this.onClick);
+    window.dispatchEvent(new Event('resize')); // 右侧栏出现了，画布要重新量尺寸
     this.timer = window.setInterval(() => this.refresh(), 200);
   }
 
@@ -44,7 +46,6 @@ export class Hud {
       case 'retreat': s.retreat(); break;
       case 'again': s.newBattle(); break;
       case 'home': s.goHome(); break;
-      case 'annex': s.annex(); break;
       case 'settle': s.settle(); break;
     }
   }
@@ -91,8 +92,8 @@ export class Hud {
     }).join('');
     const anyUnit = d.placed().some(e => e.def.speed > 0);
     return `
-      <h2>${s.ai ? `进攻 AI 基地 · Lv${s.ai.level}` : '部署部队（战斗原型）'}</h2>
-      ${btn('home', '', '← 返回基地')}
+      <h2>${s.ai ? `进攻据点「${strongholdName(s.ai.id)}」· ${s.ai.level} 级` : '部署部队（战斗原型）'}</h2>
+      ${btn('home', '', this.homeLabel())}
       <p>敌方基地四周的一圈空地是投送区，部队只能摆在这里。出击不能修建防御塔或工事。</p>
       <p class="legend">投送区被几座敌方塔的射程覆盖：
         <span style="color:#7dff8a">■ 0</span>
@@ -120,7 +121,7 @@ export class Hud {
       .map(([id, n]) => `<tr><td>${DEFS[id].name}</td><td>${n}</td></tr>`).join('');
     return `
       <h2>演习 · 防守自己的基地</h2>
-      ${btn('home', '', '← 返回基地')}
+      ${btn('home', '', this.homeLabel())}
       <p>电脑带着下面这支军队从外圈进攻你的基地。你的塔、工事和部队都会参战；你可以在交战中框选自己的部队指挥。</p>
       <p>演习结束后一切恢复原状，不消耗任何东西，也没有奖励。</p>
       <p class="legend">外圈被你几座塔的射程覆盖：
@@ -189,7 +190,7 @@ export class Hud {
       </table>
       ${this.sortieHtml()}
       ${s.mode === 'prototype' ? btn('again', '', '再来一局（新地图）', { primary: true }) : ''}
-      ${btn('home', '', '← 返回基地', { primary: s.mode === 'sortie' })}`;
+      ${btn('home', '', this.homeLabel(), { primary: s.mode === 'sortie' })}`;
   }
 
   // 演习结果：进攻方损失、我方被毁的塔和建筑
@@ -222,7 +223,7 @@ export class Hud {
       </table>
       <p class="hint">演习不造成任何实际损失，基地和部队都是原样。</p>
       ${btn('again', '', '再演一次', { primary: true })}
-      ${btn('home', '', '← 返回基地')}`;
+      ${btn('home', '', this.homeLabel())}`;
   }
 
   // 出击结算：伤员、掠夺所得、吞并
@@ -244,15 +245,22 @@ export class Hud {
         const lost = r.loot!.loot[k] - r.loot!.kept[k];
         return `<tr><td>${RESOURCE_NAME[k]}</td><td class="pos">+${r.loot!.kept[k]}</td><td>${lost > 0 ? `<span class="neg">${lost} 放不下作废</span>` : ''}</td></tr>`;
       }).join('');
-      parts.push(`<h3>掠夺（对方仓库的 50%，对方进入 24 小时免战）</h3><table class="stats">${rows}</table>`);
+      parts.push(`<h3>掠夺（对方仓库的 50%）</h3><table class="stats">${rows}</table>`);
     }
-    const annex = s.annexInfo();
-    if (annex) {
-      parts.push(`<h3>吞并</h3><p>这个基地与你的领地相邻。花 ${annex.cost} 金币吞并：领地和建筑归你，市政厅拆掉。</p>
-        ${btn('annex', '', `吞并（${annex.cost} 金币）`, { disabled: annex.ok !== true, title: annex.ok === true ? '' : annex.ok })}`);
+    // 征服进度：守备值打掉了多少
+    const before = Math.round(r.defenseBefore * 100), after = Math.round(r.defenseAfter * 100);
+    if (r.conquered) {
+      parts.push(`<h3 class="pos">据点已征服</h3><p>守备 ${before}% → 0%。它现在是你的附属据点，每小时把产量的一半和一些市民送到主基地。</p>`);
+    } else {
+      parts.push(`<h3>征服进度</h3>
+        <div class="defense"><span>守备</span><div class="bar"><i style="width:${after}%"></i></div><b>${before}% → ${after}%</b></div>
+        <p class="hint">被打掉的守军和防御不会马上恢复，24 小时内再来进攻，接着往下打。守备打到 0 就征服它。</p>`);
     }
-    if (s.annexed) parts.push('<p class="pos">已吞并，回到基地就能看到新领地。</p>');
     return parts.join('');
+  }
+
+  private homeLabel(): string {
+    return this.scene.mode === 'sortie' ? '← 返回世界地图' : '← 返回基地';
   }
 
   private helpHtml(): string {

@@ -1,4 +1,5 @@
 import { START_TECH } from '../../data/tech';
+import { placeStrongholds } from '../world/ai';
 import { Base, newBaseState, type BaseState } from './base';
 import { advanceTo, type ResourceMap } from './economy';
 
@@ -43,8 +44,12 @@ export function parseSave(raw: string): BaseState | string {
     : parsed;
   if (!inner || typeof inner !== 'object') return '不是有效的存档文件';
   let state: BaseState;
-  if (inner.version === 2) state = { ...inner, version: 3, tech: [...START_TECH] };
-  else if (inner.version === 3) state = inner;
+  const old = inner as unknown as Omit<BaseState, 'version'> & { version: number };
+  // v2 → v3 加科技树；v3 → v4 世界地图改为据点和道路，AI 基地按存档种子重新生成（以前吞并的地和建筑保留）
+  if (old.version === 2) old.tech = [...START_TECH];
+  if (old.version === 2 || old.version === 3) {
+    state = { ...old, version: 4, ai: placeStrongholds(old.seed, typeof old.lastTick === 'number' ? old.lastTick : Date.now()) };
+  } else if (old.version === 4) state = old as BaseState;
   else return '存档版本太旧或无法识别';
   const ok = Array.isArray(state.owned) && Array.isArray(state.buildings) && Array.isArray(state.ai)
     && typeof state.seed === 'number' && !!state.res && typeof state.lastTick === 'number';

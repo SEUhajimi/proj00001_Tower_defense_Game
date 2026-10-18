@@ -11,8 +11,6 @@ import type { Db } from './db';
 // 游戏逻辑的服务器一侧：每个账号一份基地存档，所有会改存档的操作都在这里执行。
 // 出击：开始时发种子；结束时前端交上部署和指挥记录，这里重打一遍再结算。
 
-const ANNEX_WINDOW_MS = 30 * 60_000; // 打赢后多久内可以吞并
-
 export class Game {
   constructor(private db: Db, private now: () => number = Date.now, readonly dev = false) {}
 
@@ -20,7 +18,10 @@ export class Game {
 
   private load(userId: number): Base | null {
     const row = this.db.prepare('SELECT state FROM bases WHERE user_id = ?').get(userId) as { state: string } | undefined;
-    return row ? new Base(JSON.parse(row.state) as BaseState) : null;
+    if (!row) return null;
+    const state = parseSave(row.state);
+    if (typeof state === 'string') throw new Error(`存档损坏：${state}`);
+    return new Base(state);
   }
 
   private store(userId: number, base: Base): void {
@@ -70,8 +71,7 @@ export class Game {
     const action = parseAction(raw);
     if (!action) return '操作格式不对';
     advanceTo(base, this.now());
-    const r = applyAction(base, action, action.type === 'annex' ? this.annexable(userId) : null);
-    if (r === true && action.type === 'annex') this.db.prepare('DELETE FROM sorties WHERE user_id = ?').run(userId);
+    const r = applyAction(base, action);
     this.store(userId, base);
     // 失败也把最新状态发回去，前端据此纠正
     return r === true ? { state: base.state } : { state: base.state, error: r };
@@ -95,11 +95,11 @@ export class Game {
     const base = this.load(userId);
     if (!base) return '还没有存档';
     const ai = Number.isInteger(aiId) ? base.getAi(aiId as number) : undefined;
-    if (!ai) return '没有这个 AI 基地';
+    if (!ai) return '没有这个据点';
     const roster = parseRoster(rawRoster);
     if (!roster) return '部队格式不对';
     advanceTo(base, this.now());
-    const ok = canSortie(base, ai, roster, this.now());
+    const ok = canSortie(base, ai, roster);
     if (ok !== true) return ok;
     const sortieId = randomBytes(12).toString('hex'), seed = randomInt(1, 1e9);
     // 每个账号同时只有一场出击，新的覆盖旧的（关掉页面没打完的就作废）
@@ -119,11 +119,11 @@ export class Game {
     if (!log) return '战斗记录格式不对';
     const base = this.load(userId);
     const ai = base?.getAi(row.ai_id);
-    if (!base || !ai) return '这个 AI 基地已经不在了';
+    if (!base || !ai) return '这个据点已经不在了';
     const roster = JSON.parse(row.roster) as Roster;
     advanceTo(base, this.now());
     // 开战前再查一次兵力：开始出击后又去拆兵、修兵就不行了
-    const ok = canSortie(base, ai, roster, this.now());
+    const ok = canSortie(base, ai, roster);
     if (ok !== true) return ok;
     const fight = replaySortie(ai, roster, row.seed, log);
     if (typeof fight === 'string') return fight;
@@ -132,14 +132,6 @@ export class Game {
     this.db.prepare(`UPDATE sorties SET status = ?, finished_at = ? WHERE user_id = ?`)
       .run(report.outcome === 'victory' ? 'won' : 'done', this.now(), userId);
     return { report, state: base.state };
-  }
-
-  // 刚打赢、还能吞并的 AI 基地
-  private annexable(userId: number): number | null {
-    const row = this.db.prepare('SELECT ai_id, status, finished_at FROM sorties WHERE user_id = ?').get(userId) as
-      { ai_id: number; status: string; finished_at: number | null } | undefined;
-    if (!row || row.status !== 'won' || row.finished_at === null || this.now() - row.finished_at > ANNEX_WINDOW_MS) return null;
-    return row.ai_id;
   }
 }
 

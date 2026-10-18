@@ -1,5 +1,5 @@
-import type { Amounts } from './economy';
-import type { DefId } from './units';
+import type { Amounts, BaseBuildingId } from './economy';
+import { DEFS, type DefId } from './units';
 
 // 征兵：在基地国防部训练部队。士兵来自人口，占住房；每小时消耗粮食。
 
@@ -32,6 +32,20 @@ export const TRAINING: Partial<Record<DefId, TrainingDef>> = {
 };
 
 export const TRAINABLE = Object.keys(TRAINING) as DefId[];
+
+// 兵种在哪种建筑里研发和生产：步兵在兵营，坦克在战车工厂，飞机在飞机工厂
+export type FactoryId = Extract<BaseBuildingId, 'barracks' | 'tankFactory' | 'airfield'>;
+
+export function factoryOf(id: DefId): FactoryId {
+  const kind = DEFS[id].kind;
+  return kind === 'tank' ? 'tankFactory' : kind === 'fighter' || kind === 'bomber' ? 'airfield' : 'barracks';
+}
+
+export const FACTORY_UNITS: Record<FactoryId, DefId[]> = {
+  barracks: TRAINABLE.filter(id => factoryOf(id) === 'barracks'),
+  tankFactory: TRAINABLE.filter(id => factoryOf(id) === 'tankFactory'),
+  airfield: TRAINABLE.filter(id => factoryOf(id) === 'airfield'),
+};
 
 // 维修费 = 训练费 × 损失的血量比例 × 该系数
 export const REPAIR_RATE = 0.5;

@@ -9,7 +9,7 @@ import type { BattleLog } from '../../shared/sim/world/replay';
 import { createAiBattle, type Roster, type SortieReport } from '../../shared/sim/world/sortie';
 import type { AiBase } from '../../shared/sim/world/ai';
 import { createDrill } from '../../shared/sim/world/drill';
-import { act, finishSortie, session } from './session';
+import { finishSortie, session } from './session';
 import { Hud } from '../ui/hud';
 import { footprintDiamond, pointsOf, TILE_H, TILE_W, tileDiamond, toScreen, toWorld } from './iso';
 import { FX_EXPLOSION, FX_SMOKE, ROCK_KEYS, texLift, texScale } from './art';
@@ -64,7 +64,6 @@ export class BattleScene extends Phaser.Scene {
   report: SortieReport | null = null; // 出击结算结果（服务器算的）
   settling = false; // 正在等服务器结算
   settleError: string | null = null;
-  annexed = false;
   private roster: Roster = {};
   private sortieId = '';
   private sortieSeed = 1;
@@ -123,7 +122,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   goHome(): void {
-    this.scene.start('base');
+    this.scene.start(this.mode === 'sortie' ? 'world' : 'base');
   }
 
   // ---------- 流程 ----------
@@ -138,7 +137,6 @@ export class BattleScene extends Phaser.Scene {
     this.report = null;
     this.settling = false;
     this.settleError = null;
-    this.annexed = false;
     this.log = { placements: [], commands: [] };
     if (this.mode === 'sortie' && this.ai) {
       const fight = createAiBattle(this.ai, this.roster, this.sortieSeed);
@@ -239,20 +237,6 @@ export class BattleScene extends Phaser.Scene {
       else this.report = r;
       if (this.phase === 'result') this.hud.render();
     });
-  }
-
-  // 胜利结算时吞并（必须相邻且付得起）
-  annexInfo(): { cost: number; ok: true | string } | null {
-    const base = session().base;
-    if (this.mode !== 'sortie' || !this.ai || this.report?.outcome !== 'victory' || this.annexed) return null;
-    if (!base.adjacentToPlayer(this.ai)) return null;
-    return { cost: base.annexCost(this.ai), ok: base.canAnnex(this.ai) };
-  }
-
-  annex(): void {
-    if (!this.ai) return;
-    if (act({ type: 'annex', aiId: this.ai.id }) === true) this.annexed = true;
-    this.hud.render();
   }
 
   // ---------- 每帧 ----------

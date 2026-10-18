@@ -18,6 +18,7 @@ const BUILDING_ART: Record<string, string> = {
   lumberMill: 'buildings/b014', quarry: 'details/rocks_5', mine: 'details/rocks_2', oilWell: 'buildings/b085',
   steelMill: 'buildings/b046', refinery: 'buildings/b093', arsenal: 'buildings/b009', electronicsPlant: 'buildings/b124',
   warehouse: 'buildings/b040', oilDepot: 'buildings/b108', ammoDepot: 'buildings/b010',
+  barracks: 'buildings/b122', tankFactory: 'buildings/b125', airfield: 'buildings/b114',
 };
 
 // 塔和工事：塔防包的石块从下往上叠

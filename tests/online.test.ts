@@ -119,7 +119,7 @@ describe('存档在服务器', () => {
     const call = await player('p1');
     expect((await call('base')).data.state).toBeNull();
     const c = await call('base/claim', {});
-    expect(c.data.state.version).toBe(3);
+    expect(c.data.state.version).toBe(4);
     expect((await call('base/claim', {})).data.error).toBe('这个账号已经有存档了');
     expect((await call('base')).data.state.seed).toBe(c.data.state.seed);
   });
@@ -139,22 +139,22 @@ describe('存档在服务器', () => {
     const hall = (data.state as BaseState).buildings[0];
     const r = await call('base/action', { action: { type: 'build', defId: 'house', x: hall.x + 4, y: hall.y } });
     expect(r.data.error).toBeUndefined();
-    expect(r.data.state.buildings.length).toBe(2);
+    expect(r.data.state.buildings.length).toBe(3); // 市政厅、开局兵营、新盖的民居
     // 刷新后还在
-    expect((await call('base')).data.state.buildings.length).toBe(2);
+    expect((await call('base')).data.state.buildings.length).toBe(3);
     const bad = await call('base/action', { action: { type: 'build', defId: 'house', x: hall.x + 4, y: hall.y } });
     expect(bad.data.error).toBe('这里已有建筑');
-    expect(bad.data.state.buildings.length).toBe(2);
+    expect(bad.data.state.buildings.length).toBe(3);
     expect((await call('base/action', { action: { type: 'build', defId: 'hall', x: 0, y: 0 } })).data.error).toBe('操作格式不对');
     expect((await call('base/action', { action: { type: 'setTax', rate: 5 } })).data.error).toBe('操作格式不对');
     expect((await call('base/action', { action: { type: 'research', defId: 'tank1' } })).data.error).toBe('科研点不足');
   });
 
-  it('没打赢不能吞并', async () => {
+  it('吞并已经取消（改为征服），服务器不认这个操作', async () => {
     const call = await player('p4');
     const { data } = await call('base/claim', {});
     const aiId = (data.state as BaseState).ai[0].id;
-    expect((await call('base/action', { action: { type: 'annex', aiId } })).data.error).toBe('必须先打赢这个基地，在胜利结算时吞并');
+    expect((await call('base/action', { action: { type: 'annex', aiId } })).data.error).toBe('操作格式不对');
   });
 });
 
@@ -179,9 +179,11 @@ describe('出击由服务器结算', () => {
   it('乱发的出击请求不认：兵力不够、没有的基地、不存在的出击', async () => {
     const call = await player('p6');
     const { data } = await call('base/claim', {});
-    const ai = (data.state as BaseState).ai[0];
+    const ais = (data.state as BaseState).ai;
+    const ai = ais.find(a => a.links.includes(0))!, far = ais.find(a => !a.links.includes(0))!;
     expect((await call('sortie/start', { aiId: ai.id, roster: { tank4: 5 } })).data.error).toBe('选择的部队超过现有兵力');
-    expect((await call('sortie/start', { aiId: 9999, roster: { rifle: 1 } })).data.error).toBe('没有这个 AI 基地');
+    expect((await call('sortie/start', { aiId: far.id, roster: { rifle: 1 } })).data.error).toBe('没有道路通到这里，先拿下和它相连的据点');
+    expect((await call('sortie/start', { aiId: 9999, roster: { rifle: 1 } })).data.error).toBe('没有这个据点');
     expect((await call('sortie/finish', { sortieId: 'nope', log: { placements: [], commands: [] } })).status).toBe(400);
   });
 

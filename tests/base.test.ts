@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HALL_STORAGE, START_RESOURCES, TERRAIN_PRICE } from '../shared/data/economy';
+import { HALL_STORAGE, START_RESOURCES } from '../shared/data/economy';
 import { Base, newBaseState } from '../shared/sim/base/base';
 import { advanceTo, hourlyRates, powerInfo, step } from '../shared/sim/base/economy';
 import { PLOT_SIZE, REGION_PLOTS, START_PLOT } from '../shared/sim/base/terrain';
@@ -32,7 +32,7 @@ function hours(b: Base, h: number): void {
 describe('开局', () => {
   it('有市政厅、3×3 地块，开局领地里有森林、平原、山地', () => {
     const b = fresh();
-    expect(b.state.buildings.map(o => o.defId)).toEqual(['hall']);
+    expect(b.state.buildings.map(o => o.defId)).toEqual(['hall', 'barracks']);
     expect(b.state.owned.length).toBe(9);
     expect(b.terrainAt(FOREST.x, FOREST.y)).toBe('forest');
     expect(b.terrainAt(PLAIN.x, PLAIN.y)).toBe('plain');
@@ -43,11 +43,12 @@ describe('开局', () => {
 });
 
 describe('建造', () => {
-  it('采集建筑要建在对应地形上', () => {
+  it('建筑不挑地形：伐木场可以建在平原上，农场可以建在森林里', () => {
     const b = rich();
-    expect(b.canBuild('lumberMill', PLAIN.x, PLAIN.y)).toBe('必须整块建在森林上');
-    expect(typeof b.build('lumberMill', FOREST.x, FOREST.y)).toBe('object');
-    expect(typeof b.build('farm', PLAIN.x, PLAIN.y)).toBe('object');
+    expect(typeof b.build('lumberMill', PLAIN.x, PLAIN.y)).toBe('object');
+    expect(b.state.res.wood).toBe(400);
+    b.state.res.wood = 400;
+    expect(b.canBuild('farm', FOREST.x, FOREST.y)).toBe(true);
   });
 
   it('扣除造价；不能建在领地外或叠在别的建筑上', () => {
@@ -58,14 +59,14 @@ describe('建造', () => {
     expect(b.canBuild('house', 0, 0)).toBe('只能建在自己的领地上');
   });
 
-  it('移动免费，地形限制照旧；拆除返还一半', () => {
+  it('移动免费；拆除返还一半', () => {
     const b = rich();
     const mill = b.build('lumberMill', FOREST.x, FOREST.y);
     if (typeof mill === 'string') throw new Error(mill);
     const before = { ...b.state.res };
     expect(b.move(mill.uid, FOREST.x + 2, FOREST.y + 2)).toBe(true);
     expect(b.state.res).toEqual(before);
-    expect(b.move(mill.uid, PLAIN.x, PLAIN.y)).toBe('必须整块建在森林上');
+    expect(b.move(mill.uid, PLAIN.x, PLAIN.y)).toBe(true);
     expect(b.demolish(mill.uid)).toBe(true);
     expect(b.state.res.stone).toBe(before.stone + 15);
     expect(b.demolish(b.state.buildings[0].uid)).toBe('市政厅不能拆除');
@@ -73,16 +74,17 @@ describe('建造', () => {
 });
 
 describe('买地', () => {
-  it('第一块平原 500，铁矿脉加倍；只能买相邻的，越买越贵', () => {
+  it('第一块 500，不分地形；只能买相邻的，越买越贵', () => {
     const b = rich();
-    expect(b.plotPrice(IRON_PLOT)).toBe(1000);
+    expect(b.plotPrice(IRON_PLOT)).toBe(500);
     expect(b.canBuyPlot(0)).toBe('只能买与领地相邻的地块');
     expect(b.buyPlot(IRON_PLOT)).toBe(true);
-    expect(b.state.res.gold).toBe(2000);
+    expect(b.state.res.gold).toBe(2500);
     expect(b.ownsTile(IRON.x, IRON.y)).toBe(true);
-    // 第 2 块：500 × 2^1.5 ≈ 1414（平原）
+    // 第 2 块：500 × 2^1.5 ≈ 1414，铁矿脉和平原一个价
     const next = (y0 - 1) * REGION_PLOTS + x0 + 1;
-    expect(b.plotPrice(next)).toBe(Math.round(500 * Math.pow(2, 1.5) * TERRAIN_PRICE[b.terrain[next]]));
+    expect(b.plotPrice(next)).toBe(1414);
+    expect(b.plotPrice(IRON_PLOT + 1)).toBe(1414);
   });
 });
 
@@ -126,10 +128,10 @@ describe('生产', () => {
   it('电力不足时耗电建筑按比例减产', () => {
     const b = rich();
     b.state.res.steel = 2000; b.state.res.wood = 2000; b.state.res.stone = 2000;
-    // 市政厅供 10 电，4 座研究所要 12 电 → 效率 10/12
+    // 市政厅供 10 电，开局兵营 2 电 + 4 座研究所 12 电 → 效率 10/14
     for (const [dx, dy] of [[0, 0], [2, 0], [0, 2], [2, 2]]) b.build('lab', PLAIN.x + dx, PLAIN.y + dy);
-    expect(powerInfo(b).efficiency).toBeCloseTo(10 / 12, 5);
-    expect(hourlyRates(b).research).toBeCloseTo(5 + 40 * 10 / 12, 3);
+    expect(powerInfo(b).efficiency).toBeCloseTo(10 / 14, 5);
+    expect(hourlyRates(b).research).toBeCloseTo(5 + 40 * 10 / 14, 3);
   });
 
   it('收税：市民 × 20 × 税率', () => {
@@ -179,5 +181,54 @@ describe('离线生产', () => {
 
   it('开局资源与设定一致', () => {
     expect(fresh().state.res).toEqual(START_RESOURCES);
+  });
+});
+
+describe('升级', () => {
+  it('升到 n 级花 n 倍造价，效果变成 n 倍；最高 5 级', () => {
+    const b = rich();
+    for (const r of Object.keys(b.state.res) as (keyof typeof b.state.res)[]) b.state.res[r] = 1000;
+    b.state.res.gold = 3000;
+    const mill = b.build('lumberMill', PLAIN.x, PLAIN.y);
+    if (typeof mill === 'string') throw new Error(mill);
+    const stone = b.state.res.stone, gold = b.state.res.gold;
+    expect(b.upgrade(mill.uid)).toBe(true);
+    expect(mill.level).toBe(2);
+    expect(b.state.res.stone).toBe(stone - 30 * 2);
+    expect(b.state.res.gold).toBe(gold - 50 * 2);
+    b.state.res.wood = 0;
+    hours(b, 1);
+    expect(b.state.res.wood).toBeCloseTo(80 * 2, 3);
+    for (let k = 3; k <= 5; k++) expect(b.upgrade(mill.uid)).toBe(true);
+    expect(b.canUpgrade(mill.uid)).toBe('已经是最高级');
+  });
+
+  it('升级的住房、仓库、耗电都翻倍；塔和军工建筑不能升级', () => {
+    const b = rich();
+    b.state.res.stone = 1000; b.state.res.steel = 1000; b.state.res.wood = 1000;
+    const cap0 = b.popCap(), power0 = powerInfo(b).demand;
+    const house = b.build('house', PLAIN.x, PLAIN.y);
+    if (typeof house === 'string') throw new Error(house);
+    expect(b.upgrade(house.uid)).toBe(true);
+    expect(b.popCap()).toBe(cap0 + 40);
+    expect(powerInfo(b).demand).toBe(power0 + 2);
+    const hall = b.state.buildings[0];
+    const gold0 = b.storageCap().gold;
+    b.state.res.gold = 3000;
+    expect(b.upgrade(hall.uid)).toBe(true);
+    expect(b.storageCap().gold).toBe(gold0 + HALL_STORAGE.gold);
+    const barracks = b.state.buildings.find(o => o.defId === 'barracks')!;
+    expect(b.canUpgrade(barracks.uid)).toBe('这种建筑不能升级');
+  });
+
+  it('拆除升过级的建筑，返还累计投入的一半', () => {
+    const b = rich();
+    b.state.res.stone = 1000; b.state.res.gold = 3000;
+    const mill = b.build('lumberMill', PLAIN.x, PLAIN.y);
+    if (typeof mill === 'string') throw new Error(mill);
+    b.upgrade(mill.uid);
+    const stone = b.state.res.stone;
+    expect(b.demolish(mill.uid)).toBe(true);
+    expect(b.state.res.stone).toBe(stone + (30 + 60) / 2);
   });
 });

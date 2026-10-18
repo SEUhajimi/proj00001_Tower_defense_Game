@@ -3,6 +3,7 @@ import { api, setCurrentUser } from './game/api';
 import { BaseScene } from './game/BaseScene';
 import { BattleScene } from './game/BattleScene';
 import { BootScene } from './game/BootScene';
+import { WorldScene } from './game/WorldScene';
 import { watchConnection } from './ui/connection';
 import { showLogin } from './ui/login';
 import './style.css';
@@ -16,7 +17,7 @@ function start(username: string): void {
     parent: 'game',
     backgroundColor: '#1a2433',
     scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
-    scene: [BootScene, BaseScene, BattleScene], // 第一个是开场场景
+    scene: [BootScene, BaseScene, WorldScene, BattleScene], // 第一个是开场场景
   });
   // 开发模式下暴露出来，方便浏览器自动化测试定位格子
   if (import.meta.env.DEV) (window as unknown as { game: Phaser.Game }).game = game;

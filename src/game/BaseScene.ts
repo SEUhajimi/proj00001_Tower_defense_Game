@@ -1,65 +1,45 @@
 import Phaser from 'phaser';
-import { baseDef, type BaseBuildingId, type Terrain } from '../../shared/data/economy';
+import { baseDef, type BaseBuildingId } from '../../shared/data/economy';
 import { DEFS, type DefId } from '../../shared/data/units';
-import { Base, type PlacedBuilding } from '../../shared/sim/base/base';
+import { Base, levelOf, type PlacedBuilding } from '../../shared/sim/base/base';
 import { advanceTo } from '../../shared/sim/base/economy';
-import { PLOT_SIZE, REGION_PLOTS, REGION_TILES } from '../../shared/sim/base/terrain';
-import { aiRect, generateAiLayout, isProtected, type AiBase } from '../../shared/sim/world/ai';
-import { canSortie, type Roster } from '../../shared/sim/world/sortie';
-import { BaseHud } from '../ui/baseHud';
-import { footprintDiamond, pointsOf, TILE_H, TILE_W, tileDiamond, toScreen, toWorld } from './iso';
-import { act, downloadSave, fastForward, onSync, resetBase, session, startSortie } from './session';
-import { ROCK_KEYS, texLift, texScale, TREE_KEYS } from './art';
-import { BASE_INSET, makeBaseTextures } from './textures';
+import { PLOT_SIZE, REGION_PLOTS } from '../../shared/sim/base/terrain';
+import type { Roster } from '../../shared/sim/world/sortie';
+import { BaseUi } from '../ui/baseUi';
+import { footprintDiamond, pointsOf, TILE_H, toScreen, toWorld, tileDiamond } from './iso';
+import { act, downloadSave, fastForward, onSync, resetBase, session } from './session';
+import { makeBaseTextures } from './textures';
+import {
+  buildingSprite, drawPlots, hideCoveredProps, placeSprite, plotXY, strokeTerritory,
+  type Prop, type Sprite,
+} from './worldDraw';
 
 export type BaseMode = 'idle' | 'build' | 'move' | 'buyLand';
 
-// 地面颜色取自 Kenney 素材的配色
-const TERRAIN_COLOR: Record<Terrain, [number, number]> = {
-  plain: [0x8ab549, 0x85b045],
-  forest: [0x6f9a3c, 0x6a953a],
-  mountain: [0xb3ab95, 0xaba38c],
-  iron: [0xba8c5d, 0xb48759],
-  oil: [0x5a5d66, 0x55585f],
-};
-
-// 森林和山地上的树、石头：占 2×2 格，盖了建筑的地方隐藏
-interface Prop {
-  img: Phaser.GameObjects.Image;
-  x: number;
-  y: number;
-}
-
-const AI_TINT = 0xff8a80; // AI 基地的建筑偏红
-
-interface Sprite {
-  img: Phaser.GameObjects.Image;
-  label: Phaser.GameObjects.Text;
-}
-
-// 基地场景 = 世界地图：自己的基地在中间，四周是 AI 基地。
+// 基地场景：只显示自己的领地（外加紧挨着的一圈地块，买地用），方便细致规划。
+// 看 AI 基地、出击要点右下角的“世界地图”。
 export class BaseScene extends Phaser.Scene {
   base!: Base;
   mode: BaseMode = 'idle';
   tool: BaseBuildingId | null = null;
   selected: number | null = null; // 选中的自家建筑 uid
-  selectedAi: number | null = null; // 选中的 AI 基地 id
   offline: { hours: number; gained: Record<string, number> } | null = null;
   message = '';
 
   private sprites = new Map<number, Sprite>();
-  private aiSprites: Phaser.GameObjects.GameObject[] = [];
   private props: Prop[] = [];
+  private ground!: Phaser.GameObjects.Graphics;
   private fog!: Phaser.GameObjects.Graphics;
   private ghost!: Phaser.GameObjects.Graphics;
   private priceTags: Phaser.GameObjects.Text[] = [];
+  private viewKey = ''; // 领地变了（买地、吞并）就要重画地面
   private hover: { x: number; y: number } | null = null;
   private dragFrom: { x: number; y: number; scrollX: number; scrollY: number } | null = null;
   private keys!: Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT', Phaser.Input.Keyboard.Key>;
   private tickTimer = 0;
   private taxTimer = 0; // 拖动税率滑块时，停手后再发给服务器
-  private busy = false; // 正在等服务器（出击、重新开局），别重复点
-  private hud!: BaseHud;
+  private busy = false; // 正在等服务器（重新开局），别重复点
+  private hud!: BaseUi;
 
   constructor() {
     super('base');
@@ -76,31 +56,28 @@ export class BaseScene extends Phaser.Scene {
     this.message = s.notice ?? '';
     s.notice = null;
     this.sprites = new Map();
-    this.aiSprites = [];
     this.props = [];
     this.priceTags = [];
+    this.viewKey = '';
     this.mode = 'idle';
     this.tool = null;
     this.selected = null;
-    this.selectedAi = null;
 
     makeBaseTextures(this);
-    this.drawTerrain();
+    this.ground = this.add.graphics().setDepth(-1000);
     this.fog = this.add.graphics().setDepth(-900);
     this.ghost = this.add.graphics().setDepth(1e6);
-    this.drawTerritory();
+    this.drawView();
     this.syncBuildings();
-    this.drawAiBases();
-    this.setupCamera();
+    this.setupCamera(true);
     this.setupInput();
-
-    this.hud = new BaseHud(this);
+    this.hud = new BaseUi(this);
     // 服务器结果回来：以它为准重画；被拒绝的操作显示原因
     const off = onSync(error => {
       if (this.selected !== null && !this.base.state.buildings.some(b => b.uid === this.selected)) this.selected = null;
       if (error) this.message = error;
+      this.drawView();
       this.syncBuildings();
-      this.drawTerritory();
       this.hud.render();
     });
     this.events.once('shutdown', () => {
@@ -116,8 +93,7 @@ export class BaseScene extends Phaser.Scene {
     this.mode = mode;
     this.tool = tool;
     if (mode !== 'move') this.message = '';
-    if (mode !== 'idle') this.selectedAi = null;
-    this.drawTerritory();
+    this.drawFog();
     this.hud.render();
   }
 
@@ -135,6 +111,14 @@ export class BaseScene extends Phaser.Scene {
     const r = act({ type: 'demolish', uid: this.selected });
     this.message = r === true ? '' : r;
     if (r === true) { this.selected = null; this.syncBuildings(); }
+    this.hud.onSelect();
+  }
+
+  upgradeSelected(): void {
+    if (this.selected === null) return;
+    const r = act({ type: 'upgrade', uid: this.selected });
+    this.message = r === true ? '' : r;
+    this.syncBuildings();
     this.hud.render();
   }
 
@@ -189,30 +173,12 @@ export class BaseScene extends Phaser.Scene {
     });
   }
 
-  // 出击：本地先查一遍，再向服务器要战场种子，然后进入战斗场景
-  startSortie(roster: Roster): void {
-    const ai = this.selectedAiBase();
-    if (!ai || this.busy) return;
-    const ok = canSortie(this.base, ai, roster, Date.now());
-    if (ok !== true) { this.message = ok; this.hud.render(); return; }
-    this.busy = true;
-    void startSortie(ai.id, roster).then(r => {
-      this.busy = false;
-      if (typeof r === 'string') { this.message = r; this.hud.render(); return; }
-      this.scene.start('battle', { mode: 'sortie', aiId: ai.id, roster, sortieId: r.sortieId, seed: r.seed });
-    });
-  }
-
   enterPrototype(): void {
     this.scene.start('battle', { mode: 'prototype' });
   }
 
   selectedBuilding(): PlacedBuilding | undefined {
     return this.base.state.buildings.find(b => b.uid === this.selected);
-  }
-
-  selectedAiBase(): AiBase | undefined {
-    return this.selectedAi === null ? undefined : this.base.getAi(this.selectedAi);
   }
 
   // ---------- 每帧 ----------
@@ -230,56 +196,41 @@ export class BaseScene extends Phaser.Scene {
 
   // ---------- 绘制 ----------
 
-  // 世界有 160×160 格，逐格画太重：按地块整块上色，再撒少量装饰
-  private drawTerrain(): void {
-    const g = this.add.graphics().setDepth(-1000);
-    for (let py = 0; py < REGION_PLOTS; py++) {
-      for (let px = 0; px < REGION_PLOTS; px++) {
-        const t = this.base.terrain[py * REGION_PLOTS + px];
-        const x0 = px * PLOT_SIZE, y0 = py * PLOT_SIZE;
-        g.fillStyle(TERRAIN_COLOR[t][(px + py) & 1]);
-        g.fillPoints(pointsOf(footprintDiamond(x0, y0, PLOT_SIZE)), true);
-        if (t === 'forest' || t === 'mountain') this.addProps(t, px, py);
-        for (const [dx, dy] of [[0.9, 1.1], [2.6, 0.8], [1.4, 2.7], [3.1, 2.9]]) {
-          const c = toScreen(x0 + dx, y0 + dy);
-          if (t === 'iron' || t === 'oil') {
-            g.fillStyle(t === 'iron' ? 0xc07a52 : 0x15161a);
-            g.fillEllipse(c.sx, c.sy, 12, 6);
-          }
+  // 显示范围：自己的地块，加上四周紧挨着的一圈
+  private viewPlots(): number[] {
+    const set = new Set<number>();
+    for (const p of this.base.state.owned) {
+      const { px, py } = plotXY(p);
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = px + dx, ny = py + dy;
+          if (nx >= 0 && ny >= 0 && nx < REGION_PLOTS && ny < REGION_PLOTS) set.add(ny * REGION_PLOTS + nx);
         }
       }
     }
-    g.lineStyle(1, 0x000000, 0.18);
-    for (let i = 0; i <= REGION_PLOTS; i++) {
-      const a = toScreen(i * PLOT_SIZE, 0), b = toScreen(i * PLOT_SIZE, REGION_TILES);
-      g.lineBetween(a.sx, a.sy, b.sx, b.sy);
-      const c = toScreen(0, i * PLOT_SIZE), d = toScreen(REGION_TILES, i * PLOT_SIZE);
-      g.lineBetween(c.sx, c.sy, d.sx, d.sy);
+    return [...set];
+  }
+
+  // 领地变了才重画地面和树木
+  private drawView(): void {
+    const key = [...this.base.state.owned].sort((a, b) => a - b).join(',');
+    if (key !== this.viewKey) {
+      this.viewKey = key;
+      this.ground.clear();
+      for (const p of this.props) p.img.destroy();
+      this.props = drawPlots(this, this.ground, this.base, this.viewPlots());
+      this.setupCamera(false);
     }
+    this.drawFog();
   }
 
-  // 森林铺满四块树林，山地放两堆石头（AI 基地的地上不放）
-  private addProps(t: Terrain, px: number, py: number): void {
-    if (this.base.aiAtPlot(py * REGION_PLOTS + px)) return;
-    const spots = t === 'forest' ? [[0, 0], [2, 0], [0, 2], [2, 2]] : (px + py) % 2 ? [[0, 0], [2, 2]] : [[2, 0], [0, 2]];
-    const pool = t === 'forest' ? TREE_KEYS : ROCK_KEYS;
-    spots.forEach(([dx, dy], k) => {
-      const x = px * PLOT_SIZE + dx, y = py * PLOT_SIZE + dy;
-      const c = toScreen(x + 1, y + 1);
-      const img = this.add.image(c.sx, c.sy + TILE_H, pool[(px * 7 + py * 3 + k) % pool.length]).setOrigin(0.5, 1);
-      img.setScale((TILE_W * 2) / img.width).setDepth(x + y + 2);
-      this.props.push({ img, x, y });
-    });
-  }
-
-  // 自家领地画格子线并描边，领地外压暗，AI 领地染红；买地模式下高亮可买的地块并标价
-  drawTerritory(): void {
+  // 领地内画格子线、外圈压暗，买地模式下高亮可买的地块并标价
+  private drawFog(): void {
     const g = this.fog;
     g.clear();
     for (const t of this.priceTags) t.destroy();
     this.priceTags = [];
-    const plotXY = (p: number) => ({ px: p % REGION_PLOTS, py: Math.floor(p / REGION_PLOTS) });
-    for (let p = 0; p < REGION_PLOTS * REGION_PLOTS; p++) {
+    for (const p of this.viewPlots()) {
       const { px, py } = plotXY(p);
       const x0 = px * PLOT_SIZE, y0 = py * PLOT_SIZE;
       const diamond = pointsOf(footprintDiamond(x0, y0, PLOT_SIZE));
@@ -293,59 +244,19 @@ export class BaseScene extends Phaser.Scene {
         }
         continue;
       }
-      if (this.base.aiAtPlot(p)) {
-        g.fillStyle(0xff3030, 0.12);
-        g.fillPoints(diamond, true);
-        continue;
-      }
       const buyable = this.mode === 'buyLand' && this.base.canBuyPlot(p) !== '只能买与领地相邻的地块';
-      g.fillStyle(buyable ? 0xffe14a : 0x000000, buyable ? 0.22 : 0.3);
+      g.fillStyle(buyable ? 0xffe14a : 0x0b0f14, buyable ? 0.22 : 0.45);
       g.fillPoints(diamond, true);
       if (buyable) {
         const c = toScreen((px + 0.5) * PLOT_SIZE, (py + 0.5) * PLOT_SIZE);
         const tag = this.add.text(c.sx, c.sy, `${this.base.plotPrice(p)}`, {
-          fontFamily: 'Microsoft YaHei, sans-serif', fontSize: '14px', fontStyle: 'bold',
+          fontFamily: 'Microsoft YaHei, sans-serif', fontSize: '15px', fontStyle: 'bold',
           color: this.base.canBuyPlot(p) === true ? '#ffe14a' : '#ff8080', stroke: '#000', strokeThickness: 3,
         }).setOrigin(0.5).setDepth(1e5);
         this.priceTags.push(tag);
       }
     }
-    // 领地边界线
-    g.lineStyle(2, 0xffffff, 0.7);
-    for (let p = 0; p < REGION_PLOTS * REGION_PLOTS; p++) {
-      if (!this.base.ownsPlot(p)) continue;
-      const { px, py } = plotXY(p);
-      const x0 = px * PLOT_SIZE, y0 = py * PLOT_SIZE, x1 = x0 + PLOT_SIZE, y1 = y0 + PLOT_SIZE;
-      const edge = (nx: number, ny: number, ax: number, ay: number, bx: number, by: number) => {
-        const inside = nx >= 0 && ny >= 0 && nx < REGION_PLOTS && ny < REGION_PLOTS && this.base.ownsPlot(ny * REGION_PLOTS + nx);
-        if (inside) return;
-        const a = toScreen(ax, ay), b = toScreen(bx, by);
-        g.lineBetween(a.sx, a.sy, b.sx, b.sy);
-      };
-      edge(px, py - 1, x0, y0, x1, y0);
-      edge(px, py + 1, x0, y1, x1, y1);
-      edge(px - 1, py, x0, y0, x0, y1);
-      edge(px + 1, py, x1, y0, x1, y1);
-    }
-  }
-
-  private buildingSprite(defId: BaseBuildingId, x: number, y: number, tint?: number): Sprite {
-    const d = baseDef(defId);
-    const img = this.add.image(0, 0, `bb-${defId}`).setOrigin(0.5, 1).setScale(texScale(`bb-${defId}`));
-    const label = this.add.text(0, 0, d.icon, {
-      fontFamily: 'Microsoft YaHei, sans-serif', fontSize: d.size >= 2 ? '20px' : '15px', fontStyle: 'bold', color: '#1d2229',
-    }).setOrigin(0.5);
-    if (tint !== undefined) img.setTint(tint);
-    this.placeSprite({ img, label }, d.size, x, y);
-    return { img, label };
-  }
-
-  private placeSprite(s: Sprite, size: number, x: number, y: number): void {
-    const c = toScreen(x + size / 2, y + size / 2);
-    const bottom = c.sy + BASE_INSET * size * (TILE_H / 2);
-    const w = TILE_W * size * BASE_INSET, h = texLift(s.img.texture.key, 26);
-    s.img.setPosition(c.sx, bottom).setDepth(x + y + size);
-    s.label.setPosition(c.sx, bottom - h - w / 4).setDepth(x + y + size + 0.5);
+    strokeTerritory(g, this.base);
   }
 
   syncBuildings(): void {
@@ -353,41 +264,20 @@ export class BaseScene extends Phaser.Scene {
     for (const b of this.base.state.buildings) {
       alive.add(b.uid);
       let s = this.sprites.get(b.uid);
-      if (!s) { s = this.buildingSprite(b.defId, b.x, b.y); this.sprites.set(b.uid, s); }
-      this.placeSprite(s, baseDef(b.defId).size, b.x, b.y);
+      if (!s) { s = buildingSprite(this, b.defId, b.x, b.y); this.sprites.set(b.uid, s); }
+      placeSprite(s, baseDef(b.defId).size, b.x, b.y);
+      // 屋顶上的字后面标等级
+      const label = baseDef(b.defId).icon + (levelOf(b) > 1 ? levelOf(b) : '');
+      if (s.label.text !== label) s.label.setText(label);
       s.img.setAlpha(this.mode === 'move' && b.uid === this.selected ? 0.35 : 1);
     }
     for (const [uid, s] of this.sprites) {
       if (!alive.has(uid)) { s.img.destroy(); s.label.destroy(); this.sprites.delete(uid); }
     }
-    for (const p of this.props) {
-      const covered = [[0, 0], [1, 0], [0, 1], [1, 1]].some(([dx, dy]) => this.base.buildingAt(p.x + dx, p.y + dy));
-      p.img.setVisible(!covered);
-    }
+    hideCoveredProps(this.base, this.props);
   }
 
-  // AI 基地：按布局画出全部建筑（偏红），头顶标等级和免战状态
-  private drawAiBases(): void {
-    for (const o of this.aiSprites) o.destroy();
-    this.aiSprites = [];
-    const now = Date.now();
-    for (const ai of this.base.state.ai) {
-      const r = aiRect(ai), layout = generateAiLayout(ai);
-      for (const b of layout.buildings) {
-        const id = (b.skin ?? (b.defId === 'hq' ? 'hall' : b.defId)) as BaseBuildingId;
-        const s = this.buildingSprite(id, r.x + b.x, r.y + b.y, AI_TINT);
-        this.aiSprites.push(s.img, s.label);
-      }
-      const top = toScreen(r.x, r.y);
-      const tag = this.add.text(top.sx, top.sy - 30, `AI 基地 Lv${ai.level}${isProtected(ai, now) ? ' · 免战' : ''}`, {
-        fontFamily: 'Microsoft YaHei, sans-serif', fontSize: '16px', fontStyle: 'bold',
-        color: isProtected(ai, now) ? '#9ad0ff' : '#ff8080', stroke: '#000', strokeThickness: 4,
-      }).setOrigin(0.5).setDepth(1e5);
-      this.aiSprites.push(tag);
-    }
-  }
-
-  // 建造/移动时的占地预览，以及选中的建筑或 AI 基地的描边
+  // 建造/移动时的占地预览，以及选中建筑的描边
   private drawGhost(): void {
     const g = this.ghost;
     g.clear();
@@ -395,12 +285,6 @@ export class BaseScene extends Phaser.Scene {
     if (sel) {
       g.lineStyle(2, 0xffe14a, 1);
       g.strokePoints(pointsOf(footprintDiamond(sel.x, sel.y, baseDef(sel.defId).size)), true);
-    }
-    const ai = this.selectedAiBase();
-    if (ai) {
-      const r = aiRect(ai);
-      g.lineStyle(3, 0xffe14a, 1);
-      g.strokePoints(pointsOf(footprintDiamond(r.x, r.y, r.size)), true);
     }
     const h = this.hover;
     if (!h) return;
@@ -437,21 +321,30 @@ export class BaseScene extends Phaser.Scene {
 
   // ---------- 相机与输入 ----------
 
-  private setupCamera(): void {
+  // 镜头框住领地；fit 时对准领地中心并缩放到整块领地刚好看得见
+  private setupCamera(fit: boolean): void {
     const cam = this.cameras.main;
-    const left = toScreen(0, REGION_TILES).sx, right = toScreen(REGION_TILES, 0).sx;
-    cam.setBounds(left - 300, -300, right - left + 600, toScreen(REGION_TILES, REGION_TILES).sy + 600);
-    const hall = this.base.state.buildings.find(b => b.defId === 'hall')!;
-    const c = toScreen(hall.x + 1.5, hall.y + 1.5);
-    cam.centerOn(c.sx, c.sy);
-    cam.setZoom(0.6);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of this.base.state.owned) {
+      const { px, py } = plotXY(p);
+      x0 = Math.min(x0, px); y0 = Math.min(y0, py); x1 = Math.max(x1, px + 1); y1 = Math.max(y1, py + 1);
+    }
+    const [tx0, ty0, tx1, ty1] = [x0 * PLOT_SIZE, y0 * PLOT_SIZE, x1 * PLOT_SIZE, y1 * PLOT_SIZE];
+    const left = toScreen(tx0, ty1).sx, right = toScreen(tx1, ty0).sx;
+    const top = toScreen(tx0, ty0).sy, bottom = toScreen(tx1, ty1).sy;
+    const pad = PLOT_SIZE * TILE_H * 2; // 外圈一块地的宽度再多留一点
+    cam.setBounds(left - pad, top - pad, right - left + pad * 2, bottom - top + pad * 2);
+    if (!fit) return;
+    cam.centerOn((left + right) / 2, (top + bottom) / 2);
+    const zoom = Math.min(cam.width / (right - left + 160), cam.height / (bottom - top + 200));
+    cam.setZoom(Phaser.Math.Clamp(zoom, 0.5, 1.4));
   }
 
   private setupInput(): void {
     this.input.mouse?.disableContextMenu();
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT') as typeof this.keys;
-    kb.on('keydown-ESC', () => { this.selectedAi = null; this.setMode('idle'); });
+    kb.on('keydown-ESC', () => { this.selected = null; this.setMode('idle'); this.hud.onSelect(); });
 
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       const w = toWorld(p.worldX, p.worldY);
@@ -476,12 +369,12 @@ export class BaseScene extends Phaser.Scene {
       if (p.button !== 2 || !this.dragFrom) return;
       const moved = Math.hypot(p.x - this.dragFrom.x, p.y - this.dragFrom.y);
       this.dragFrom = null;
-      if (moved < 5) { this.selected = null; this.selectedAi = null; this.setMode('idle'); this.syncBuildings(); }
+      if (moved < 5) { this.selected = null; this.setMode('idle'); this.syncBuildings(); this.hud.onSelect(); }
     });
 
     this.input.on('wheel', (_p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
       const cam = this.cameras.main;
-      cam.setZoom(Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.9 : 1.1), 0.2, 2));
+      cam.setZoom(Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.9 : 1.1), 0.4, 2.5));
     });
   }
 
@@ -506,13 +399,12 @@ export class BaseScene extends Phaser.Scene {
       const plot = Math.floor(ty / PLOT_SIZE) * REGION_PLOTS + Math.floor(tx / PLOT_SIZE);
       const r = act({ type: 'buyPlot', plot });
       this.message = r === true ? '' : r;
-      this.drawTerritory();
+      this.drawView();
       this.hud.render();
     } else {
       this.selected = this.base.buildingAt(tx, ty)?.uid ?? null;
-      this.selectedAi = this.selected === null ? this.base.aiAt(tx, ty)?.id ?? null : null;
       this.message = '';
-      this.hud.render();
+      this.hud.onSelect();
     }
   }
 
