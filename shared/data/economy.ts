@@ -1,4 +1,4 @@
-import { DEFS, type DefId } from './units';
+import { DEFS, type DefId, type UnitDef } from './units';
 
 // 基地经营数值。产量单位：每小时（真实时间，关掉游戏也照常生产）。
 
@@ -197,6 +197,52 @@ export const MAX_LEVEL = 5;
 export function upgradable(id: BaseBuildingId): boolean {
   const d = baseDef(id);
   return !d.battleDef && !d.factory;
+}
+
+// 每种建筑最多能建几座，按市政厅等级（1–5 级）取。升级市政厅来提高上限
+export const BUILD_LIMITS: Record<Exclude<BaseBuildingId, 'hall'>, number[]> = {
+  house: [2, 4, 6, 8, 10],
+  market: [1, 2, 3, 4, 5],
+  farm: [1, 2, 3, 4, 5],
+  powerPlant: [1, 2, 3, 4, 5],
+  granary: [1, 1, 2, 2, 3],
+  vault: [1, 1, 2, 2, 3],
+  lab: [1, 1, 2, 3, 4],
+  lumberMill: [1, 2, 2, 3, 4],
+  quarry: [1, 2, 2, 3, 4],
+  mine: [1, 1, 2, 3, 4],
+  oilWell: [1, 1, 2, 3, 4],
+  steelMill: [1, 1, 2, 2, 3],
+  refinery: [1, 1, 2, 2, 3],
+  arsenal: [1, 1, 2, 2, 3],
+  electronicsPlant: [1, 1, 2, 2, 3],
+  warehouse: [1, 2, 2, 3, 4],
+  oilDepot: [1, 2, 2, 3, 4],
+  ammoDepot: [1, 2, 2, 3, 4],
+  barracks: [1, 1, 2, 2, 3],
+  tankFactory: [1, 1, 2, 2, 3],
+  airfield: [1, 1, 2, 2, 3],
+  mgTower: [4, 6, 8, 10, 12],
+  cannonTower: [2, 3, 4, 6, 8],
+  atTower: [2, 3, 4, 6, 8],
+  aaTower: [2, 3, 4, 5, 6],
+  pillbox: [2, 3, 4, 5, 6],
+  bunker: [1, 2, 3, 4, 5],
+};
+
+export function buildLimit(id: BaseBuildingId, hallLevel: number): number {
+  if (id === 'hall') return 1;
+  const row = BUILD_LIMITS[id];
+  return row[Math.max(0, Math.min(row.length, hallLevel) - 1)];
+}
+
+// 防御建筑的攻击范围（格）：塔看武器射程；工事看驻防机枪兵的射程加上工事加成；其他建筑 0
+export function defenseRange(id: BaseBuildingId): number {
+  const bd = baseDef(id).battleDef;
+  if (!bd) return 0;
+  const d = DEFS[bd] as UnitDef;
+  if (d.kind === 'fort') return Math.max(...DEFS.mg.weapons.map(w => w.range)) + (d.rangeBonus ?? 0);
+  return Math.max(0, ...d.weapons.map(w => w.range));
 }
 
 export function upgradeCost(id: BaseBuildingId, toLevel: number): Amounts {

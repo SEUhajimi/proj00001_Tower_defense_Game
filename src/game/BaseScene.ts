@@ -1,11 +1,13 @@
 import Phaser from 'phaser';
 import { baseDef, type BaseBuildingId } from '../../shared/data/economy';
 import { DEFS, type DefId } from '../../shared/data/units';
+import { defenseRange } from '../../shared/data/economy';
 import { Base, levelOf, type PlacedBuilding } from '../../shared/sim/base/base';
 import { advanceTo } from '../../shared/sim/base/economy';
 import { PLOT_SIZE, REGION_PLOTS } from '../../shared/sim/base/terrain';
 import type { Roster } from '../../shared/sim/world/sortie';
 import { BaseUi } from '../ui/baseUi';
+import { BaseTroops } from './baseTroops';
 import { footprintDiamond, pointsOf, TILE_H, toScreen, toWorld, tileDiamond } from './iso';
 import { act, downloadSave, fastForward, onSync, resetBase, session } from './session';
 import { makeBaseTextures } from './textures';
@@ -25,15 +27,19 @@ export class BaseScene extends Phaser.Scene {
   selected: number | null = null; // 选中的自家建筑 uid
   offline: { hours: number; gained: Record<string, number> } | null = null;
   message = '';
+  troops!: BaseTroops; // 基地里的部队
 
   private sprites = new Map<number, Sprite>();
   private props: Prop[] = [];
+  private tiles: Phaser.GameObjects.Image[] = []; // 地面贴图
   private ground!: Phaser.GameObjects.Graphics;
   private fog!: Phaser.GameObjects.Graphics;
+  private plan!: Phaser.GameObjects.Graphics; // 建造时的规划视图：格子线和各建筑占地
   private ghost!: Phaser.GameObjects.Graphics;
   private priceTags: Phaser.GameObjects.Text[] = [];
   private viewKey = ''; // 领地变了（买地、吞并）就要重画地面
   private hover: { x: number; y: number } | null = null;
+  private leftDown: { sx: number; sy: number; wx: number; wy: number } | null = null; // 左键按下的位置（区分点选和框选）
   private dragFrom: { x: number; y: number; scrollX: number; scrollY: number } | null = null;
   private keys!: Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT', Phaser.Input.Keyboard.Key>;
   private tickTimer = 0;
@@ -57,6 +63,7 @@ export class BaseScene extends Phaser.Scene {
     s.notice = null;
     this.sprites = new Map();
     this.props = [];
+    this.tiles = [];
     this.priceTags = [];
     this.viewKey = '';
     this.mode = 'idle';
@@ -67,8 +74,11 @@ export class BaseScene extends Phaser.Scene {
     this.ground = this.add.graphics().setDepth(-1000);
     this.fog = this.add.graphics().setDepth(-900);
     this.ghost = this.add.graphics().setDepth(1e6);
+    this.plan = this.add.graphics().setDepth(9e5);
     this.drawView();
     this.syncBuildings();
+    this.troops = new BaseTroops(this, this.base);
+    this.troops.sync();
     this.setupCamera(true);
     this.setupInput();
     this.hud = new BaseUi(this);
@@ -78,6 +88,7 @@ export class BaseScene extends Phaser.Scene {
       if (error) this.message = error;
       this.drawView();
       this.syncBuildings();
+      this.troops.sync();
       this.hud.render();
     });
     this.events.once('shutdown', () => {
@@ -94,6 +105,7 @@ export class BaseScene extends Phaser.Scene {
     this.tool = tool;
     if (mode !== 'move') this.message = '';
     this.drawFog();
+    this.drawPlan();
     this.hud.render();
   }
 
@@ -132,12 +144,14 @@ export class BaseScene extends Phaser.Scene {
   recruit(defId: DefId, n: number): void {
     const r = act({ type: 'recruit', defId, n });
     this.message = r === true ? '' : r;
+    this.troops.sync(); // 新兵从建筑里跑出来
     this.hud.render();
   }
 
   repairAll(): void {
     const r = act({ type: 'repairAll' });
     this.message = r === true ? '' : r;
+    this.troops.sync();
     this.hud.render();
   }
 
@@ -191,6 +205,7 @@ export class BaseScene extends Phaser.Scene {
       this.tickTimer = 0;
       advanceTo(this.base, Date.now());
     }
+    this.troops.update(deltaMs / 1000);
     this.drawGhost();
   }
 
@@ -218,7 +233,9 @@ export class BaseScene extends Phaser.Scene {
       this.viewKey = key;
       this.ground.clear();
       for (const p of this.props) p.img.destroy();
-      this.props = drawPlots(this, this.ground, this.base, this.viewPlots());
+      for (const t of this.tiles) t.destroy();
+      this.tiles = [];
+      this.props = drawPlots(this, this.ground, this.base, this.viewPlots(), this.tiles);
       this.setupCamera(false);
     }
     this.drawFog();
@@ -269,12 +286,39 @@ export class BaseScene extends Phaser.Scene {
       // 屋顶上的字后面标等级
       const label = baseDef(b.defId).icon + (levelOf(b) > 1 ? levelOf(b) : '');
       if (s.label.text !== label) s.label.setText(label);
-      s.img.setAlpha(this.mode === 'move' && b.uid === this.selected ? 0.35 : 1);
     }
     for (const [uid, s] of this.sprites) {
       if (!alive.has(uid)) { s.img.destroy(); s.label.destroy(); this.sprites.delete(uid); }
     }
     hideCoveredProps(this.base, this.props);
+    this.drawPlan();
+  }
+
+  // 建造、移动建筑时：领地里的格子线加亮，每座建筑的占地底部标出来（画在建筑上面，被挡住的也看得见）
+  private drawPlan(): void {
+    const g = this.plan;
+    if (!g) return;
+    g.clear();
+    if (this.mode !== 'build' && this.mode !== 'move') return;
+    g.lineStyle(1, 0xffffff, 0.22);
+    for (const p of this.base.state.owned) {
+      const { px, py } = plotXY(p);
+      const x0 = px * PLOT_SIZE, y0 = py * PLOT_SIZE;
+      for (let k = 0; k <= PLOT_SIZE; k++) {
+        const a = toScreen(x0 + k, y0), b = toScreen(x0 + k, y0 + PLOT_SIZE);
+        g.lineBetween(a.sx, a.sy, b.sx, b.sy);
+        const c = toScreen(x0, y0 + k), d = toScreen(x0 + PLOT_SIZE, y0 + k);
+        g.lineBetween(c.sx, c.sy, d.sx, d.sy);
+      }
+    }
+    for (const b of this.base.state.buildings) {
+      const moving = this.mode === 'move' && b.uid === this.selected;
+      const d = pointsOf(footprintDiamond(b.x, b.y, baseDef(b.defId).size));
+      g.fillStyle(moving ? 0xffe14a : 0x5fb0ff, moving ? 0.15 : 0.22);
+      g.fillPoints(d, true);
+      g.lineStyle(2, moving ? 0xffe14a : 0x8fd0ff, 0.9);
+      g.strokePoints(d, true);
+    }
   }
 
   // 建造/移动时的占地预览，以及选中建筑的描边
@@ -285,14 +329,19 @@ export class BaseScene extends Phaser.Scene {
     if (sel) {
       g.lineStyle(2, 0xffe14a, 1);
       g.strokePoints(pointsOf(footprintDiamond(sel.x, sel.y, baseDef(sel.defId).size)), true);
+      // 选中的塔：画出射程
+      if (this.mode === 'idle') this.drawRange(g, sel.defId, sel.x, sel.y);
     }
     const h = this.hover;
+    const spot = h && (this.mode === 'build' || this.mode === 'move') ? this.ghostSpot() : null;
+    this.fadeCovering(spot);
     if (!h) return;
     if (this.mode === 'build' || this.mode === 'move') {
-      const spot = this.ghostSpot();
       if (!spot) return;
       g.fillStyle(spot.ok === true ? 0x7dff8a : 0xff4040, 0.45);
       g.fillPoints(pointsOf(footprintDiamond(spot.x, spot.y, spot.size)), true);
+      const id = this.mode === 'build' ? this.tool : sel?.defId;
+      if (id) this.drawRange(g, id, spot.x, spot.y);
     } else if (this.mode === 'buyLand') {
       const px = Math.floor(h.x / PLOT_SIZE), py = Math.floor(h.y / PLOT_SIZE);
       g.lineStyle(2, 0xffffff, 0.9);
@@ -300,6 +349,41 @@ export class BaseScene extends Phaser.Scene {
     } else if (this.base.ownsTile(h.x, h.y)) {
       g.lineStyle(1.5, 0xffffff, 0.5);
       g.strokePoints(pointsOf(tileDiamond(h.x, h.y)), true);
+    }
+  }
+
+  // 防御塔、工事的攻击范围：从占地边缘量起，画成地面上的一圈
+  private drawRange(g: Phaser.GameObjects.Graphics, id: BaseBuildingId, x: number, y: number): void {
+    const r = defenseRange(id);
+    if (!r) return;
+    const size = baseDef(id).size, c = toScreen(x + size / 2, y + size / 2);
+    const R = r + size / 2;
+    const w = R * 2 * 32 * Math.SQRT2, hgt = R * 2 * 16 * Math.SQRT2;
+    g.fillStyle(0xffd23f, 0.08);
+    g.fillEllipse(c.sx, c.sy, w, hgt);
+    g.lineStyle(2, 0xffd23f, 0.85);
+    g.strokeEllipse(c.sx, c.sy, w, hgt);
+  }
+
+  // 放建筑、移动建筑时，挡住预览位置的建筑和树木变半透明，看得见下面的格子
+  private fadeCovering(spot: { x: number; y: number; size: number } | null): void {
+    let rect: Phaser.Geom.Rectangle | null = null;
+    if (spot) {
+      const top = toScreen(spot.x, spot.y), bottom = toScreen(spot.x + spot.size, spot.y + spot.size);
+      const left = toScreen(spot.x, spot.y + spot.size), right = toScreen(spot.x + spot.size, spot.y);
+      rect = new Phaser.Geom.Rectangle(left.sx, top.sy, right.sx - left.sx, bottom.sy - top.sy);
+    }
+    for (const b of this.base.state.buildings) {
+      const s = this.sprites.get(b.uid);
+      if (!s) continue;
+      const moving = this.mode === 'move' && b.uid === this.selected;
+      const covers = !!rect && Phaser.Geom.Intersects.RectangleToRectangle(rect, s.img.getBounds());
+      const a = moving ? 0.35 : covers ? 0.3 : 1;
+      if (s.img.alpha !== a) { s.img.setAlpha(a); s.label.setAlpha(a); }
+    }
+    for (const p of this.props) {
+      const a = rect && Phaser.Geom.Intersects.RectangleToRectangle(rect, p.img.getBounds()) ? 0.3 : 1;
+      if (p.img.alpha !== a) p.img.setAlpha(a);
     }
   }
 
@@ -337,14 +421,14 @@ export class BaseScene extends Phaser.Scene {
     if (!fit) return;
     cam.centerOn((left + right) / 2, (top + bottom) / 2);
     const zoom = Math.min(cam.width / (right - left + 160), cam.height / (bottom - top + 200));
-    cam.setZoom(Phaser.Math.Clamp(zoom, 0.5, 1.4));
+    cam.setZoom(Phaser.Math.Clamp(zoom, 0.3, 1.4));
   }
 
   private setupInput(): void {
     this.input.mouse?.disableContextMenu();
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT') as typeof this.keys;
-    kb.on('keydown-ESC', () => { this.selected = null; this.setMode('idle'); this.hud.onSelect(); });
+    kb.on('keydown-ESC', () => { this.selected = null; this.troops.clear(); this.setMode('idle'); this.hud.onSelect(); });
 
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       const w = toWorld(p.worldX, p.worldY);
@@ -354,6 +438,11 @@ export class BaseScene extends Phaser.Scene {
         cam.scrollX = this.dragFrom.scrollX - (p.x - this.dragFrom.x) / cam.zoom;
         cam.scrollY = this.dragFrom.scrollY - (p.y - this.dragFrom.y) / cam.zoom;
       }
+      // 左键拖动：框选部队
+      const d = this.leftDown;
+      if (d && p.leftButtonDown() && Math.hypot(p.x - d.sx, p.y - d.sy) >= 6) {
+        this.troops.setBox({ x0: d.wx, y0: d.wy, x1: p.worldX, y1: p.worldY });
+      }
     });
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
@@ -362,19 +451,52 @@ export class BaseScene extends Phaser.Scene {
         this.dragFrom = { x: p.x, y: p.y, scrollX: cam.scrollX, scrollY: cam.scrollY };
         return;
       }
+      // 平时左键要等松开才知道是点选还是框选；建造、移动、买地时按下就生效
+      if (this.mode === 'idle') { this.leftDown = { sx: p.x, sy: p.y, wx: p.worldX, wy: p.worldY }; return; }
       if (this.hover) this.click(this.hover.x, this.hover.y, p.event.shiftKey);
     });
 
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (p.button === 0 && this.leftDown) {
+        const d = this.leftDown;
+        this.leftDown = null;
+        this.troops.setBox(null);
+        const shift = p.event.shiftKey;
+        if (Math.hypot(p.x - d.sx, p.y - d.sy) >= 6) {
+          this.troops.selectBox(d.wx, d.wy, p.worldX, p.worldY, shift);
+          this.selected = null;
+          this.hud.onSelect();
+          return;
+        }
+        const k = this.troops.pick(p.worldX, p.worldY);
+        if (k) {
+          this.troops.selectOne(k, shift);
+          this.selected = null;
+          this.hud.onSelect();
+        } else if (this.hover) {
+          this.troops.clear();
+          this.click(this.hover.x, this.hover.y, shift);
+        }
+        return;
+      }
       if (p.button !== 2 || !this.dragFrom) return;
       const moved = Math.hypot(p.x - this.dragFrom.x, p.y - this.dragFrom.y);
       this.dragFrom = null;
-      if (moved < 5) { this.selected = null; this.setMode('idle'); this.syncBuildings(); this.hud.onSelect(); }
+      if (moved >= 5) return; // 那是在拖动视角
+      // 右键单击：有选中的部队就移动过去，否则取消选择
+      if (this.troops.selected.size && this.mode === 'idle') {
+        const w = toWorld(p.worldX, p.worldY);
+        const r = this.troops.moveSelected(w.x, w.y);
+        this.message = r === true ? '' : r;
+        this.hud.render();
+        return;
+      }
+      this.selected = null; this.setMode('idle'); this.syncBuildings(); this.hud.onSelect();
     });
 
     this.input.on('wheel', (_p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
       const cam = this.cameras.main;
-      cam.setZoom(Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.9 : 1.1), 0.4, 2.5));
+      cam.setZoom(Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.9 : 1.1), 0.2, 2.5));
     });
   }
 

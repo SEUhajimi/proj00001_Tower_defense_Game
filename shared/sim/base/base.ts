@@ -2,11 +2,12 @@ import { LOOT_SHARE } from '../../data/ai';
 import { factoryOf, REPAIR_RATE, START_ARMY, TRAINING } from '../../data/army';
 import {
   baseDef, BASE_BUILDINGS, HALL_STORAGE, RESOURCE_NAME, RESOURCES, START_POP, START_RESOURCES, START_TAX,
-  MAX_LEVEL, upgradable, upgradeCost, type Amounts, type BaseBuildingId, type ResourceId, type Terrain,
+  buildLimit, MAX_LEVEL, upgradable, upgradeCost, type Amounts, type BaseBuildingId, type ResourceId, type Terrain,
 } from '../../data/economy';
 import { START_TECH, TECH_REQUIRES, TECH_STAGES, techStage } from '../../data/tech';
 import { DEFS, type DefId } from '../../data/units';
 import { advanceAi, placeStrongholds, type AiBase } from '../world/ai';
+import { validTroopSpot } from './troops';
 import { generateTerrain, PLOT_SIZE, REGION_PLOTS, REGION_TILES, START_PLOT } from './terrain';
 
 export interface PlacedBuilding {
@@ -27,7 +28,7 @@ export interface Wounded {
 
 // 存档里保存的全部内容（地形和 AI 基地布局由种子重新生成，不存）
 export interface BaseState {
-  version: 4;
+  version: 5;
   seed: number;
   lastTick: number; // 上次结算到的时间戳（毫秒）
   owned: number[]; // 已拥有的地块编号
@@ -40,6 +41,7 @@ export interface BaseState {
   research: number; // 手上的科研点，研发科技时花掉
   tech: DefId[]; // 已研发的兵种和塔
   army: Partial<Record<DefId, number>>; // 可以出击的部队
+  troopPos?: Partial<Record<DefId, ([number, number] | null)[]>>; // 玩家移动过的部队站在哪（见 troops.ts）
   wounded: Wounded[];
   ai: AiBase[]; // 世界地图上的据点（含已征服的）
 }
@@ -49,9 +51,9 @@ export function newBaseState(seed: number, now: number): BaseState {
   for (let y = START_PLOT.y0; y < START_PLOT.y0 + START_PLOT.size; y++) {
     for (let x = START_PLOT.x0; x < START_PLOT.x0 + START_PLOT.size; x++) owned.push(y * REGION_PLOTS + x);
   }
-  const mid = (START_PLOT.x0 + 1) * PLOT_SIZE + 1;
+  const mid = Math.floor((START_PLOT.x0 + START_PLOT.size / 2) * PLOT_SIZE) - 1; // 市政厅（3×3）放在领地正中
   return {
-    version: 4, seed, lastTick: now, owned, plotsBought: 0,
+    version: 5, seed, lastTick: now, owned, plotsBought: 0,
     // 开局：市政厅居中，正上方一座兵营
     buildings: [{ uid: 1, defId: 'hall', x: mid, y: mid }, { uid: 2, defId: 'barracks', x: mid, y: mid - 4 }],
     nextUid: 3,
@@ -171,8 +173,7 @@ export class Base {
 
   // 仓库容量：市政厅自带的基础容量（随市政厅等级翻倍）+ 各仓储建筑
   storageCap(): Record<ResourceId, number> {
-    const hall = this.state.buildings.find(b => b.defId === 'hall');
-    const k = hall ? levelOf(hall) : 1;
+    const k = this.hallLevel();
     const cap = { ...HALL_STORAGE };
     for (const r of RESOURCES) cap[r] *= k;
     for (const b of this.state.buildings) {
@@ -282,10 +283,36 @@ export class Base {
     const ok = this.canRecruit(defId, n);
     if (ok !== true) return ok;
     const t = TRAINING[defId]!;
+    this.trimTroops(); // 新兵从出厂建筑旁边出来，不接着用阵亡部队留下的位置
     for (let k = 0; k < n; k++) this.pay(t.cost);
     this.state.pop -= t.pop * n;
     this.state.army[defId] = (this.state.army[defId] ?? 0) + n;
     return true;
+  }
+
+  // 部队在基地里移动到新位置
+  moveTroops(moves: { defId: DefId; i: number; x: number; y: number }[]): true | string {
+    for (const m of moves) {
+      const ok = validTroopSpot(this, m.defId, m.i, m.x, m.y);
+      if (ok !== true) return ok;
+    }
+    this.state.troopPos ??= {};
+    for (const m of moves) {
+      const list = (this.state.troopPos[m.defId] ??= []);
+      while (list.length <= m.i) list.push(null);
+      list[m.i] = [Math.round(m.x * 100) / 100, Math.round(m.y * 100) / 100];
+    }
+    return true;
+  }
+
+  // 部队变少了（阵亡、出击）就丢掉多出来的位置
+  trimTroops(): void {
+    const pos = this.state.troopPos;
+    if (!pos) return;
+    for (const id of Object.keys(pos) as DefId[]) {
+      const n = this.state.army[id] ?? 0;
+      if (pos[id]!.length > n) pos[id] = pos[id]!.slice(0, n);
+    }
   }
 
   repairCost(w: Wounded): Amounts {
@@ -330,10 +357,21 @@ export class Base {
     return true;
   }
 
+  hallLevel(): number {
+    const hall = this.state.buildings.find(b => b.defId === 'hall');
+    return hall ? levelOf(hall) : 1;
+  }
+
+  // 这种建筑现在最多能建几座（看市政厅等级）
+  limit(defId: BaseBuildingId): number {
+    return buildLimit(defId, this.hallLevel());
+  }
+
   canBuild(defId: BaseBuildingId, tx: number, ty: number): true | string {
     const def = baseDef(defId);
     if (def.unique) return '不能再建';
     if (defId in DEFS && !this.researched(defId as DefId)) return '尚未研发';
+    if (this.count(defId) >= this.limit(defId)) return `已达上限 ${this.limit(defId)} 座，升级市政厅可以多建`;
     const fit = this.fits(defId, tx, ty);
     if (fit !== true) return fit;
     return this.canAfford(def.cost);

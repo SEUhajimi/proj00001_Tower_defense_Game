@@ -7,6 +7,7 @@ import { Battle } from '../shared/sim/battle';
 import { Grid } from '../shared/sim/grid';
 import { Rng } from '../shared/sim/rng';
 import { createDrill, DRILL_TIME_LIMIT } from '../shared/sim/world/drill';
+import { troopLayout } from '../shared/sim/base/troops';
 import { generateAiLayout } from '../shared/sim/world/ai';
 
 const T0 = 1_700_000_000_000;
@@ -138,7 +139,7 @@ describe('科技树', () => {
     expect(b.canResearch('sniper')).toBe('上一阶段研发过半后开放');
     b.research('aaTower');
     expect(b.canResearch('sniper')).toBe(true);
-    expect(b.canResearch('tank2')).toBe('需要先研发一代坦克');
+    expect(b.canResearch('tank2')).toBe('需要先研发一代坦克 T-55');
   });
 
   it('科研点不够不能研发', () => {
@@ -156,6 +157,9 @@ describe('演习', () => {
     base.state.res.ammo = 1000;
     expect(base.build('mgTower', hall.x + 4, hall.y)).not.toBeTypeOf('string');
     expect(base.build('pillbox', hall.x - 2, hall.y)).not.toBeTypeOf('string');
+    // 把三个步枪兵移到碉堡上：两个进驻，第三个满了站在旁边
+    const onFort = [0, 1, 2].map(i => ({ defId: 'rifle' as const, i, x: hall.x - 1.5, y: hall.y + 0.5 }));
+    expect(base.moveTroops(onFort)).toBe(true);
     const before = JSON.stringify(base.state);
 
     const drill = createDrill(base, AI_ATTACK[2], 1);
@@ -164,8 +168,10 @@ describe('演习', () => {
     const mine = battle.living('player');
     expect(mine.filter(e => e.def.size > 0).length).toBe(base.state.buildings.length);
     expect(mine.some(e => e.def.kind === 'hq')).toBe(true);
-    // 步兵先进了碉堡
+    // 站在碉堡上的步兵进驻了，部队总数不变
     expect(mine.find(e => e.defId === 'pillbox')!.garrison.length).toBe(2);
+    const army = Object.values(base.state.army).reduce((n, c) => n + (c ?? 0), 0);
+    expect(mine.filter(e => e.def.speed > 0).length).toBe(army);
     const placed = deployment.placed();
     expect(placed.length).toBe(Object.values(AI_ATTACK[2]).reduce((n, c) => n + (c ?? 0), 0));
     expect(placed.every(e => e.side === 'enemy' && deployment.inDropZone(Math.floor(e.x), Math.floor(e.y)))).toBe(true);
@@ -192,5 +198,32 @@ describe('演习', () => {
     expect(sniper).not.toBeNull();
     run(battle, DRILL_TIME_LIMIT + 1);
     expect(battle.outcome).toBe('victory');
+  });
+});
+
+describe('基地里的部队', () => {
+  it('没移动过的站在出厂建筑旁边、不压建筑；移动后记住位置；飞机停在飞机工厂上', () => {
+    const base = new Base(newBaseState(7, T0));
+    const layout = troopLayout(base);
+    const army = Object.values(base.state.army).reduce((n, c) => n + (c ?? 0), 0);
+    expect(layout.length).toBe(army);
+    for (const t of layout) {
+      expect(base.ownsTile(Math.floor(t.x), Math.floor(t.y))).toBe(true);
+      expect(base.buildingAt(Math.floor(t.x), Math.floor(t.y))).toBeUndefined();
+    }
+    const hall = base.state.buildings[0];
+    expect(base.moveTroops([{ defId: 'rifle', i: 0, x: hall.x + 5.5, y: hall.y + 5.5 }])).toBe(true);
+    expect(troopLayout(base).find(t => t.defId === 'rifle' && t.i === 0)).toMatchObject({ x: hall.x + 5.5, y: hall.y + 5.5 });
+    expect(base.moveTroops([{ defId: 'rifle', i: 0, x: 0.5, y: 0.5 }])).toBe('只能移动到自己的领地里');
+    expect(base.moveTroops([{ defId: 'rifle', i: 99, x: hall.x + 5.5, y: hall.y + 5.5 }])).toBe('没有这支部队');
+
+    base.state.res.stone = 1000; base.state.res.steel = 1000; base.state.res.electronics = 100;
+    const field = base.build('airfield', hall.x + 4, hall.y);
+    if (typeof field === 'string') throw new Error(field);
+    base.state.army.fighter1 = 2;
+    const planes = troopLayout(base).filter(t => t.plane);
+    expect(planes.length).toBe(2);
+    for (const p of planes) expect(base.buildingAt(Math.floor(p.x), Math.floor(p.y))?.defId).toBe('airfield');
+    expect(base.moveTroops([{ defId: 'fighter1', i: 0, x: hall.x + 5.5, y: hall.y + 5.5 }])).toBe('飞机停在机场，不能移动');
   });
 });

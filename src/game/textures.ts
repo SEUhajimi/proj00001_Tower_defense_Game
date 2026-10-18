@@ -29,7 +29,7 @@ const INFANTRY_MARK: Partial<Record<DefId, number>> = {
 };
 
 // 飞机离地的高度（像素），画面上飞机画在影子上方
-export const PLANE_ALT = 34;
+export const PLANE_ALT = 56;
 
 function poly(g: Phaser.GameObjects.Graphics, pts: number[]): void {
   const v: Phaser.Math.Vector2[] = [];

@@ -1,7 +1,7 @@
 import { AI_ATTACK } from '../../shared/data/ai';
 import { FACTORY_UNITS, TRAINING, type FactoryId } from '../../shared/data/army';
 import {
-  baseDef, HALL_STORAGE, MAX_LEVEL, RESOURCE_NAME, RESOURCES, TAX_PER_PERSON, TERRAIN_NAME, upgradable, upgradeCost,
+  baseDef, BUILD_LIMITS, buildLimit, HALL_STORAGE, MAX_LEVEL, RESOURCE_NAME, RESOURCES, TAX_PER_PERSON, TERRAIN_NAME, upgradable, upgradeCost,
   type Amounts, type BaseBuildingDef, type BaseBuildingId, type ResourceId,
 } from '../../shared/data/economy';
 import { STAGE_NAME, TECH_REQUIRES, TECH_STAGES, techStage } from '../../shared/data/tech';
@@ -96,7 +96,7 @@ export class BaseUi {
       case 'world': s.scene.start('world'); break;
       case 'group': this.buildGroup = Number(arg); this.render(); break;
       case 'build': this.panel = null; s.selectBuild(arg as BaseBuildingId); break;
-      case 'cancelMode': s.setMode('idle'); break;
+      case 'cancelMode': s.troops.clear(); s.setMode('idle'); break;
       case 'move': s.startMove(); break;
       case 'upgrade': s.upgradeSelected(); break;
       case 'demolish': if (confirm('拆除这座建筑？返还一半造价。')) s.demolishSelected(); break;
@@ -199,7 +199,8 @@ export class BaseUi {
     if (s.mode === 'build' && s.tool) text = `建造「${baseDef(s.tool).name}」：在领地内左键放置，按住 Shift 连续建造`;
     else if (s.mode === 'move') text = '移动建筑：左键点新位置放下。移动免费，不影响生产';
     else if (s.mode === 'buyLand') text = '买地：点击亮起的地块购买，上面标着价格（红色 = 金币不够）。第 n 块地 = 500 × n^1.5 金币，不分地形';
-    if (!text) return '<div class="modebar idle">左键选择建筑 · 右键拖动或 WASD 移动视角 · 滚轮缩放</div>';
+    else if (s.troops?.selected.size) text = `已选部队：${s.troops.summary()}。右键点空地移动过去，Shift 加选`;
+    if (!text) return '<div class="modebar idle">左键选建筑或部队 · 左键拖动框选部队 · 右键拖动或 WASD 移动视角 · 滚轮缩放</div>';
     return `<div class="modebar">${text}${btn('cancelMode', '', '取消（右键 / Esc）')}</div>`;
   }
 
@@ -234,7 +235,7 @@ export class BaseUi {
     const tabs = BUILD_GROUPS.map(([t], k) => btn('group', String(k), t, { active: k === this.buildGroup })).join('');
     const cards = BUILD_GROUPS[this.buildGroup][1].map(id => {
       const d = baseDef(id);
-      return btn('build', id, `<b>${d.name}</b> <span class="count">×${s.base.count(id)}</span>
+      return btn('build', id, `<b>${d.name}</b> <span class="count">${s.base.count(id)}/${s.base.limit(id)}</span>
         <small>${d.desc}</small><small class="cost">${costText(d.cost)} · ${d.size}×${d.size}</small>`, { cls: 'card' });
     }).join('');
     return `<div class="tabs">${tabs}</div><div class="cards">${cards}</div>`;
@@ -308,7 +309,9 @@ export class BaseUi {
     const d = baseDef(id);
     const now = `<div class="unitrow"><div><b>当前 Lv${lv}</b><small>${effectText(id, d, lv)}</small></div></div>`;
     if (lv >= MAX_LEVEL) return `${now}<p class="hint">已经是最高级（${MAX_LEVEL} 级）。</p>`;
+    const more = id === 'hall' ? limitGains(lv) : '';
     return `${now}<div class="unitrow"><div><b>升到 Lv${lv + 1}</b><small>${effectText(id, d, lv + 1)}</small>
+        ${more ? `<small class="gain">建筑上限：${more}</small>` : ''}
         <small class="cost">花费 ${costText(upgradeCost(id, lv + 1))}</small></div>${btn('upgrade', '', '升级')}</div>
       <p class="hint">升级不占新地方：几级就是 1 级效果的几倍（耗电也是），最高 ${MAX_LEVEL} 级。省下的地留给防御。</p>`;
   }
@@ -407,4 +410,13 @@ function effectText(id: BaseBuildingId, d: BaseBuildingDef, k: number): string {
   if (d.power) parts.push(d.power > 0 ? `发电 ${d.power * k}` : `耗电 ${-d.power * k}`);
   if (d.fuelBoost) parts.push(`有燃油时再 +${d.fuelBoost.power * k} 电（烧 ${d.fuelBoost.fuel * k} 燃油/时）`);
   return parts.join(' · ');
+}
+
+// 市政厅从 lv 升到 lv+1，哪些建筑多了几个名额
+function limitGains(lv: number): string {
+  return (Object.keys(BUILD_LIMITS) as (keyof typeof BUILD_LIMITS)[])
+    .map(id => [id, buildLimit(id, lv + 1) - buildLimit(id, lv)] as const)
+    .filter(([, n]) => n > 0)
+    .map(([id, n]) => `${baseDef(id).name} +${n}`)
+    .join('、');
 }

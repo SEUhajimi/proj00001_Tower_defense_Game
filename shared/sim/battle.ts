@@ -1,5 +1,5 @@
 import { DAMAGE_MULT, HQ_DOWN_DAMAGE_MULT, type DamageType } from '../data/combat';
-import { DEFS, isAirDef, type DefId, type UnitDef, type Weapon } from '../data/units';
+import { DEFS, isAirDef, RANGE_SCALE, type DefId, type UnitDef, type Weapon } from '../data/units';
 import type { Grid, Point } from './grid';
 import type { Rng } from './rng';
 
@@ -46,10 +46,10 @@ export type BattleEvent =
   | { type: 'boom'; x: number; y: number; r: number }
   | { type: 'death'; id: number };
 
-const ALERT_MARGIN = 3; // 驻守单位的警戒半径 = 最大射程 + 该值
+const ALERT_MARGIN = 3 * RANGE_SCALE; // 驻守单位的警戒半径 = 最大射程 + 该值
 const SEPARATION = 0.35;
 const REPATH_SECONDS = 1;
-const FLY_PAST = 3; // 战斗机投弹后再往前飞几格才掉头
+const FLY_PAST = 3 * RANGE_SCALE; // 战斗机投弹后再往前飞几格才掉头
 const STEALTH_AA_MULT = 0.5;
 
 export const isMobile = (e: Entity) => e.def.speed > 0;

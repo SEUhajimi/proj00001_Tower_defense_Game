@@ -11,8 +11,8 @@ const T0 = 1_700_000_000_000;
 const { x0, y0 } = START_PLOT;
 const tile = (px: number, py: number) => ({ x: px * PLOT_SIZE, y: py * PLOT_SIZE });
 const FOREST = tile(x0, y0), PLAIN = tile(x0, y0 + 1), MOUNTAIN = tile(x0 + 2, y0 + 2);
-const IRON_PLOT = (y0 + 1) * REGION_PLOTS + x0 + 3;
-const IRON = tile(x0 + 3, y0 + 1);
+const IRON_PLOT = (y0 + 1) * REGION_PLOTS + x0 + START_PLOT.size;
+const IRON = tile(x0 + START_PLOT.size, y0 + 1);
 
 function fresh(): Base {
   return new Base(newBaseState(42, T0));
@@ -30,10 +30,10 @@ function hours(b: Base, h: number): void {
 }
 
 describe('开局', () => {
-  it('有市政厅、3×3 地块，开局领地里有森林、平原、山地', () => {
+  it('有市政厅、8×8 地块，开局领地里有森林、平原、山地', () => {
     const b = fresh();
     expect(b.state.buildings.map(o => o.defId)).toEqual(['hall', 'barracks']);
-    expect(b.state.owned.length).toBe(9);
+    expect(b.state.owned.length).toBe(64);
     expect(b.terrainAt(FOREST.x, FOREST.y)).toBe('forest');
     expect(b.terrainAt(PLAIN.x, PLAIN.y)).toBe('plain');
     expect(b.terrainAt(MOUNTAIN.x, MOUNTAIN.y)).toBe('mountain');
@@ -128,8 +128,10 @@ describe('生产', () => {
   it('电力不足时耗电建筑按比例减产', () => {
     const b = rich();
     b.state.res.steel = 2000; b.state.res.wood = 2000; b.state.res.stone = 2000;
-    // 市政厅供 10 电，开局兵营 2 电 + 4 座研究所 12 电 → 效率 10/14
-    for (const [dx, dy] of [[0, 0], [2, 0], [0, 2], [2, 2]]) b.build('lab', PLAIN.x + dx, PLAIN.y + dy);
+    // 市政厅供 10 电，开局兵营 2 电 + 一座 4 级研究所 12 电 → 效率 10/14
+    const lab = b.build('lab', PLAIN.x, PLAIN.y);
+    if (typeof lab === 'string') throw new Error(lab);
+    for (let k = 2; k <= 4; k++) expect(b.upgrade(lab.uid)).toBe(true);
     expect(powerInfo(b).efficiency).toBeCloseTo(10 / 14, 5);
     expect(hourlyRates(b).research).toBeCloseTo(5 + 40 * 10 / 14, 3);
   });
@@ -230,5 +232,19 @@ describe('升级', () => {
     const stone = b.state.res.stone;
     expect(b.demolish(mill.uid)).toBe(true);
     expect(b.state.res.stone).toBe(stone + (30 + 60) / 2);
+  });
+});
+
+describe('建筑数量上限', () => {
+  it('每种建筑有上限，升级市政厅提高上限', () => {
+    const b = rich();
+    for (const r of Object.keys(b.state.res) as (keyof typeof b.state.res)[]) b.state.res[r] = 3000;
+    expect(b.limit('house')).toBe(2);
+    expect(typeof b.build('house', PLAIN.x, PLAIN.y)).toBe('object');
+    expect(typeof b.build('house', PLAIN.x + 2, PLAIN.y)).toBe('object');
+    expect(b.canBuild('house', PLAIN.x, PLAIN.y + 2)).toBe('已达上限 2 座，升级市政厅可以多建');
+    expect(b.upgrade(b.state.buildings[0].uid)).toBe(true);
+    expect(b.limit('house')).toBe(4);
+    expect(b.canBuild('house', PLAIN.x, PLAIN.y + 2)).toBe(true);
   });
 });

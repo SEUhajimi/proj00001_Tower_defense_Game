@@ -1,7 +1,8 @@
 import { baseDef, type BaseBuildingId } from '../../data/economy';
-import { DEFS, isAirDef, type DefId } from '../../data/units';
+import { DEFS, type DefId } from '../../data/units';
 import { Battle, type Entity } from '../battle';
 import type { Base } from '../base/base';
+import { troopLayout } from '../base/troops';
 import { PLOT_SIZE, REGION_PLOTS } from '../base/terrain';
 import { autoDeploy, Deployment } from '../deploy';
 import { Grid, type Point } from '../grid';
@@ -55,39 +56,18 @@ export function createDrill(base: Base, attackers: Roster, seed: number): DrillB
     if (DEFS[defId].kind === 'fort') forts.push(e);
   }
 
-  // 部队：步兵先进工事，其余在市政厅周围驻守；飞机只参与进攻，不守家
-  const troops: DefId[] = [];
-  for (const [id, n] of Object.entries(st.army) as [DefId, number][]) {
-    if (!isAirDef(DEFS[id])) for (let k = 0; k < n; k++) troops.push(id);
-  }
-  troops.sort((a, b) => Number(DEFS[a].kind !== 'infantry') - Number(DEFS[b].kind !== 'infantry'));
-  const spots = spotsAround(battle, hqCenter);
-  for (const id of troops) {
-    const fort = DEFS[id].kind === 'infantry'
-      ? forts.find(f => f.garrison.length < (f.def.capacity ?? 0))
+  // 部队：站在基地里摆好的位置驻守；站在工事上的步兵进驻（满了就站在旁边）；飞机只参与进攻，不守家
+  for (const t of troopLayout(base)) {
+    if (t.plane) continue;
+    const x = t.x + ox, y = t.y + oy;
+    const fort = DEFS[t.defId].kind === 'infantry'
+      ? forts.find(f => x >= f.tileX && x < f.tileX + f.def.size && y >= f.tileY && y < f.tileY + f.def.size && f.garrison.length < (f.def.capacity ?? 0))
       : undefined;
-    if (fort) {
-      battle.garrison(battle.spawn(id, 'player', fort.x, fort.y, 'hold'), fort);
-      continue;
-    }
-    const p = spots.shift();
-    if (p) battle.spawn(id, 'player', p.x, p.y, 'hold');
+    const unit = battle.spawn(t.defId, 'player', x, y, 'hold');
+    if (fort) battle.garrison(unit, fort);
   }
 
   const deployment = new Deployment(battle, { roster: { ...attackers } }, { x: DROP_RING, y: DROP_RING, w, h }, 'enemy');
   autoDeploy(deployment, hqCenter, 'assault');
   return { battle, deployment, hqCenter, mapW, mapH };
-}
-
-// 市政厅周围由近到远的空地（不压建筑），给守家的部队站
-function spotsAround(battle: Battle, c: Point): Point[] {
-  const g = battle.grid, out: (Point & { d: number })[] = [];
-  for (let y = 0; y < g.h; y++) {
-    for (let x = 0; x < g.w; x++) {
-      if (!g.isWalkable(x, y) || g.occupant[g.idx(x, y)] !== -1) continue;
-      if (x < DROP_RING || y < DROP_RING || x >= g.w - DROP_RING || y >= g.h - DROP_RING) continue;
-      out.push({ x: x + 0.5, y: y + 0.5, d: Math.hypot(x + 0.5 - c.x, y + 0.5 - c.y) });
-    }
-  }
-  return out.sort((a, b) => a.d - b.d);
 }

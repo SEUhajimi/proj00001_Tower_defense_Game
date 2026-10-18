@@ -5,7 +5,7 @@ import { Base, newBaseState, type BaseState } from '../shared/sim/base/base';
 import { exportSave } from '../shared/sim/base/save';
 import { autoDeploy } from '../shared/sim/deploy';
 import { replaySortie, type BattleLog } from '../shared/sim/world/replay';
-import { createAiBattle, type Roster } from '../shared/sim/world/sortie';
+import { createAiBattle, DROP_RING, type Roster } from '../shared/sim/world/sortie';
 import type { AiBase } from '../shared/sim/world/ai';
 import { createApp } from '../server/app';
 import { openDb } from '../server/db';
@@ -61,17 +61,17 @@ describe('战斗重放', () => {
   it('中途撤退也一样重放', () => {
     const base = new Base(newBaseState(7, 1_700_000_000_000));
     const ai = base.state.ai.find(a => a.level === 1)!;
-    const { log } = playLocally(ai, { rifle: 6 }, 3, 200);
+    const { log } = playLocally(ai, { rifle: 6 }, 3, 30);
     const again = replaySortie(ai, { rifle: 6 }, 3, log);
     if (typeof again === 'string') throw new Error(again);
     expect(again.battle.outcome).toBe('retreat');
-    expect(again.battle.ticks).toBe(200);
+    expect(again.battle.ticks).toBe(30);
   });
 
   it('部署在敌方基地里、或超出带来的兵力，不认', () => {
     const base = new Base(newBaseState(7, 1_700_000_000_000));
     const ai = base.state.ai.find(a => a.level === 1)!;
-    const inside: BattleLog = { placements: [{ id: 99, defId: 'rifle', x: 10.5, y: 10.5, stance: 'assault' }], commands: [] };
+    const inside: BattleLog = { placements: [{ id: 99, defId: 'rifle', x: DROP_RING + 2.5, y: DROP_RING + 2.5, stance: 'assault' }], commands: [] };
     expect(replaySortie(ai, { rifle: 1 }, 1, inside)).toBe('部署不合法');
     const tooMany: BattleLog = {
       placements: [0, 1].map(k => ({ id: k, defId: 'rifle' as const, x: k + 0.5, y: 0.5, stance: 'assault' as const })),
@@ -119,7 +119,7 @@ describe('存档在服务器', () => {
     const call = await player('p1');
     expect((await call('base')).data.state).toBeNull();
     const c = await call('base/claim', {});
-    expect(c.data.state.version).toBe(4);
+    expect(c.data.state.version).toBe(5);
     expect((await call('base/claim', {})).data.error).toBe('这个账号已经有存档了');
     expect((await call('base')).data.state.seed).toBe(c.data.state.seed);
   });

@@ -1,0 +1,2972 @@
+{
+ "buildings/barracks-enemy.png": {
+  "ax": 240.0,
+  "ay": 297.6,
+  "h": 480,
+  "w": 480
+ },
+ "buildings/barracks-player.png": {
+  "ax": 240.0,
+  "ay": 297.6,
+  "h": 480,
+  "w": 480
+ },
+ "ground/forest-00.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/forest-01.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/forest-02.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/forest-10.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/forest-11.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/forest-12.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/forest-20.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/forest-21.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/forest-22.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/iron-00.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/iron-01.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/iron-02.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/iron-10.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/iron-11.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/iron-12.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/iron-20.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/iron-21.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/iron-22.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/mountain-00.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/mountain-01.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/mountain-02.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/mountain-10.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/mountain-11.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/mountain-12.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/mountain-20.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/mountain-21.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/mountain-22.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/oil-00.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/oil-01.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/oil-02.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/oil-10.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/oil-11.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/oil-12.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/oil-20.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/oil-21.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/oil-22.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/plain-00.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/plain-01.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/plain-02.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/plain-10.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/plain-11.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/plain-12.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/plain-20.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/plain-21.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "ground/plain-22.png": {
+  "ax": 256.0,
+  "ay": 128.0,
+  "h": 256,
+  "w": 512
+ },
+ "units/bomber1-enemy-00.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-01.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-02.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-03.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-04.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-05.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-06.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-07.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-08.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-09.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-10.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-11.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-12.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-13.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-14.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-enemy-15.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-00.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-01.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-02.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-03.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-04.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-05.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-06.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-07.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-08.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-09.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-10.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-11.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-12.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-13.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-14.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber1-player-15.png": {
+  "ax": 200.0,
+  "ay": 200.0,
+  "h": 400,
+  "w": 400
+ },
+ "units/bomber2-enemy-00.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-01.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-02.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-03.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-04.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-05.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-06.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-07.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-08.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-09.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-10.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-11.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-12.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-13.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-14.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-enemy-15.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-00.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-01.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-02.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-03.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-04.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-05.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-06.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-07.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-08.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-09.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-10.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-11.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-12.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-13.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-14.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber2-player-15.png": {
+  "ax": 220.0,
+  "ay": 220.0,
+  "h": 440,
+  "w": 440
+ },
+ "units/bomber3-enemy-00.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-01.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-02.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-03.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-04.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-05.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-06.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-07.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-08.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-09.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-10.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-11.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-12.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-13.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-14.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-enemy-15.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-00.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-01.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-02.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-03.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-04.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-05.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-06.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-07.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-08.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-09.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-10.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-11.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-12.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-13.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-14.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber3-player-15.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-00.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-01.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-02.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-03.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-04.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-05.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-06.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-07.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-08.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-09.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-10.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-11.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-12.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-13.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-14.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-enemy-15.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-00.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-01.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-02.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-03.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-04.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-05.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-06.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-07.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-08.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-09.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-10.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-11.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-12.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-13.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-14.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/bomber4-player-15.png": {
+  "ax": 210.0,
+  "ay": 210.0,
+  "h": 420,
+  "w": 420
+ },
+ "units/fighter1-enemy-00.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-01.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-02.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-03.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-04.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-05.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-06.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-07.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-08.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-09.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-10.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-11.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-12.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-13.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-14.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-enemy-15.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-00.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-01.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-02.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-03.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-04.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-05.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-06.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-07.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-08.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-09.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-10.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-11.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-12.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-13.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-14.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter1-player-15.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-00.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-01.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-02.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-03.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-04.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-05.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-06.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-07.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-08.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-09.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-10.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-11.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-12.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-13.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-14.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-enemy-15.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-00.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-01.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-02.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-03.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-04.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-05.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-06.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-07.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-08.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-09.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-10.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-11.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-12.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-13.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-14.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter2-player-15.png": {
+  "ax": 112.0,
+  "ay": 112.0,
+  "h": 224,
+  "w": 224
+ },
+ "units/fighter3-enemy-00.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-01.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-02.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-03.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-04.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-05.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-06.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-07.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-08.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-09.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-10.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-11.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-12.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-13.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-14.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-enemy-15.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-00.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-01.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-02.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-03.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-04.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-05.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-06.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-07.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-08.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-09.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-10.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-11.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-12.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-13.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-14.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter3-player-15.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-00.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-01.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-02.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-03.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-04.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-05.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-06.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-07.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-08.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-09.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-10.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-11.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-12.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-13.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-14.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-enemy-15.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-00.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-01.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-02.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-03.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-04.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-05.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-06.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-07.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-08.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-09.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-10.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-11.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-12.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-13.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-14.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter4-player-15.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-00.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-01.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-02.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-03.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-04.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-05.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-06.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-07.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-08.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-09.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-10.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-11.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-12.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-13.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-14.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-enemy-15.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-00.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-01.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-02.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-03.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-04.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-05.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-06.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-07.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-08.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-09.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-10.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-11.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-12.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-13.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-14.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/fighter5-player-15.png": {
+  "ax": 120.0,
+  "ay": 120.0,
+  "h": 240,
+  "w": 240
+ },
+ "units/rifle-enemy-00.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-01.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-02.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-03.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-04.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-05.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-06.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-07.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-08.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-09.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-10.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-11.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-12.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-13.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-14.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-enemy-15.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-00.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-01.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-02.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-03.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-04.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-05.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-06.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-07.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-08.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-09.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-10.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-11.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-12.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-13.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-14.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/rifle-player-15.png": {
+  "ax": 56.0,
+  "ay": 69.44,
+  "h": 112,
+  "w": 112
+ },
+ "units/tank1-enemy-00.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-01.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-02.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-03.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-04.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-05.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-06.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-07.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-08.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-09.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-10.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-11.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-12.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-13.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-14.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-enemy-15.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-00.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-01.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-02.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-03.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-04.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-05.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-06.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-07.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-08.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-09.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-10.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-11.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-12.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-13.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-14.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank1-player-15.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-00.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-01.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-02.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-03.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-04.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-05.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-06.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-07.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-08.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-09.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-10.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-11.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-12.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-13.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-14.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-enemy-15.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-00.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-01.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-02.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-03.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-04.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-05.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-06.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-07.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-08.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-09.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-10.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-11.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-12.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-13.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-14.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank2-player-15.png": {
+  "ax": 88.0,
+  "ay": 98.56,
+  "h": 176,
+  "w": 176
+ },
+ "units/tank3-enemy-00.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-01.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-02.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-03.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-04.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-05.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-06.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-07.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-08.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-09.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-10.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-11.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-12.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-13.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-14.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-enemy-15.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-00.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-01.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-02.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-03.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-04.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-05.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-06.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-07.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-08.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-09.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-10.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-11.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-12.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-13.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-14.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank3-player-15.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-00.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-01.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-02.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-03.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-04.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-05.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-06.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-07.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-08.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-09.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-10.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-11.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-12.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-13.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-14.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-enemy-15.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-00.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-01.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-02.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-03.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-04.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-05.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-06.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-07.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-08.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-09.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-10.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-11.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-12.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-13.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-14.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ },
+ "units/tank4-player-15.png": {
+  "ax": 96.0,
+  "ay": 107.52,
+  "h": 192,
+  "w": 192
+ }
+}

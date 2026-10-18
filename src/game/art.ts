@@ -3,8 +3,11 @@ import { baseDef, BASE_BUILDINGS, type BaseBuildingId } from '../../shared/data/
 import { DEFS, type DefId } from '../../shared/data/units';
 import type { Side } from '../../shared/sim/battle';
 import { TILE_W } from './iso';
+import RENDERED from '../../public/assets/rendered/manifest.json';
 
-// 正式美术：Kenney 的 CC0 素材（public/assets/kenney，见那里的 CREDITS.md）。
+// 美术有两种来源：
+//   1. Blender 渲染图（public/assets/rendered，由 art/render.py 生成）：有的就优先用
+//   2. Kenney 的 CC0 素材（public/assets/kenney，见那里的 CREDITS.md）：还没渲染的先用它顶着
 // 加载后按每种东西的占地拼好、缩放成独立贴图，贴图名沿用占位美术的命名，
 // 场景代码只管按名字取图。贴图按 ART_SCALE 倍分辨率生成，显示时缩小，镜头拉近也清晰。
 
@@ -65,8 +68,69 @@ export const FX_SMOKE = [1, 2, 3, 4, 5].map(i => key(`fx/explosionSmoke${i}`));
 export const TREE_KEYS = TREES.map(key);
 export const ROCK_KEYS = ROCKS.map(key);
 
+// ---------- Blender 渲染图 ----------
+
+interface RenderInfo { w: number; h: number; ax: number; ay: number }
+const rendered = RENDERED as Record<string, RenderInfo>;
+const rkey = (path: string) => `r-${path.replace(/\.png$/, '')}`;
+const has = (path: string) => path in rendered;
+
+// 锚点：图里世界原点（建筑占地中心、单位脚下）的位置，按图宽高的比例算
+const anchorOf = new Map<string, { x: number; y: number }>();
+
+export function texAnchor(texKey: string): { x: number; y: number } | null {
+  return anchorOf.get(texKey) ?? null;
+}
+
+function useRendered(path: string, as: string): void {
+  const info = rendered[path];
+  if (!scaleOf.has(as)) {
+    if (as !== rkey(path)) {
+      const src = (sceneRef!.textures.get(rkey(path)).getSourceImage()) as HTMLImageElement;
+      sceneRef!.textures.addImage(as, src);
+    }
+    scaleOf.set(as, 1 / ART_SCALE);
+    anchorOf.set(as, { x: info.ax / info.w, y: info.ay / info.h });
+  }
+}
+
+let sceneRef: Phaser.Scene | null = null;
+
+// 地块地面（一块地 4×4 格一张）。每种地形有 3×3 张，第 (px, py) 块地用第 (px % 3, py % 3) 张，
+// 拼起来无缝、花纹每 12 格才重复一次。没渲染的返回 null
+const GROUND_REPEAT = 3;
+
+export function groundKey(terrain: string, px: number, py: number): string | null {
+  const v = `${((px % GROUND_REPEAT) + GROUND_REPEAT) % GROUND_REPEAT}${((py % GROUND_REPEAT) + GROUND_REPEAT) % GROUND_REPEAT}`;
+  const path = `ground/${terrain}-${v}.png`;
+  if (!has(path)) return null;
+  useRendered(path, rkey(path));
+  return rkey(path);
+}
+
+export const UNIT_DIRS = 16;
+
+// 单位的 16 个朝向（第 k 张朝向角 k × 22.5°，0 = 游戏 +x），没渲染的返回 null
+export function unitFrames(defId: DefId, side: Side): string[] | null {
+  if (!has(`units/${defId}-${side}-00.png`)) return null;
+  return Array.from({ length: UNIT_DIRS }, (_, k) => {
+    const path = `units/${defId}-${side}-${String(k).padStart(2, '0')}.png`;
+    useRendered(path, rkey(path));
+    return rkey(path);
+  });
+}
+
+// 朝向角 → 第几张
+export function dirIndex(angle: number): number {
+  const k = Math.round(angle / ((2 * Math.PI) / UNIT_DIRS));
+  return ((k % UNIT_DIRS) + UNIT_DIRS) % UNIT_DIRS;
+}
+
 export function preloadArt(scene: Phaser.Scene): void {
   for (const f of new Set(FILES)) scene.load.image(key(f), `${ROOT}${f}.png`);
+  for (const path of Object.keys(rendered)) {
+    if (!path.startsWith('debug/')) scene.load.image(rkey(path), `assets/rendered/${path}`);
+  }
 }
 
 // 每张拼好的贴图的显示缩放（1 / 分辨率倍数），以及从底角到顶面下角的高度（显示像素），
@@ -136,9 +200,11 @@ function stack(scene: Phaser.Scene, texKey: string, files: string[], width: numb
 
 // 加载完成后生成全部贴图（基地场景、战斗场景共用）
 export function buildArt(scene: Phaser.Scene): void {
+  sceneRef = scene;
   const BASE_INSET = 0.86;
-  // 基地建筑（基地场景，以及战斗里的民用建筑、演习里自己的建筑）
+  // 基地建筑（基地场景，以及战斗里的民用建筑、演习里自己的建筑）；有渲染图的用渲染图
   for (const id of Object.keys(BASE_BUILDINGS) as BaseBuildingId[]) {
+    if (has(`buildings/${id}-player.png`)) { useRendered(`buildings/${id}-player.png`, `bb-${id}`); continue; }
     const w = TILE_W * baseDef(id).size * BASE_INSET;
     const tower = TOWER_ART[id as DefId];
     if (tower) stack(scene, `bb-${id}`, tower, w);

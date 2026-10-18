@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { DAMAGE_MULT } from '../shared/data/combat';
-import { DEFS, type DefId } from '../shared/data/units';
+import { RANGE_SCALE, DEFS, type DefId } from '../shared/data/units';
 import { Battle } from '../shared/sim/battle';
 import { autoDeploy } from '../shared/sim/deploy';
 import { Grid } from '../shared/sim/grid';
 import { Rng } from '../shared/sim/rng';
-import { createPrototypeBattle, DROP_RING, ENEMY_HQ_CENTER, MAP_W } from '../shared/sim/scenario';
+import { createPrototypeBattle, DROP_RING, ENEMY_HQ_CENTER, MAP_W, ENEMY_BASE_RECT } from '../shared/sim/scenario';
 
 function runToEnd(battle: Battle, maxSeconds = 900): void {
   battle.start();
@@ -14,11 +14,13 @@ function runToEnd(battle: Battle, maxSeconds = 900): void {
 }
 
 // 小规模对战：a 方若干个在左，b 方一个在右，相距 4 格，打到一方倒光（不看胜负规则，塔也能参加）
+// 两边相隔 4 个旧格子（按距离尺度换算）
 function skirmish(a: DefId, count: number, b: DefId): DefId | null {
-  const battle = new Battle(new Grid(20, 20), new Rng(1));
+  const battle = new Battle(new Grid(80, 80), new Rng(1));
+  const dx = 4 * RANGE_SCALE;
   const left = Array.from({ length: count }, (_, k) =>
-    DEFS[a].size ? battle.spawn(a, 'player', 5, 8 + k * 2) : battle.spawn(a, 'player', 5.5, 10.5 + (k - (count - 1) / 2) * 0.6));
-  const right = DEFS[b].size ? battle.spawn(b, 'enemy', 9, 10) : battle.spawn(b, 'enemy', 9.5, 10.5);
+    DEFS[a].size ? battle.spawn(a, 'player', 40 - dx, 38 + k * 2) : battle.spawn(a, 'player', 40.5 - dx, 40.5 + (k - (count - 1) / 2) * 0.6));
+  const right = DEFS[b].size ? battle.spawn(b, 'enemy', 40, 40) : battle.spawn(b, 'enemy', 40.5, 40.5);
   battle.start();
   const anyLeft = () => left.some(e => e.alive);
   for (let i = 0; i < 300 / Battle.DT && anyLeft() && right.alive; i++) {
@@ -133,9 +135,9 @@ describe('碉堡与地堡', () => {
 
 describe('命令', () => {
   it('移动：到达后就地驻守，多支部队排开不挤在一点', () => {
-    const battle = new Battle(new Grid(20, 20), new Rng(1));
+    const battle = new Battle(new Grid(100, 100), new Rng(1));
     const units = [0, 1, 2].map(k => battle.spawn('rifle', 'player', 2.5, 2.5 + k, 'assault'));
-    battle.spawn('rifle', 'enemy', 18.5, 18.5, 'hold'); // 远处的敌人，保证战斗不结束
+    battle.spawn('rifle', 'enemy', 98.5, 98.5, 'hold'); // 远处的敌人，保证战斗不结束
     battle.start();
     battle.orderMove(units.map(u => u.id), 10.5, 10.5);
     for (let i = 0; i < 600; i++) battle.step();
@@ -236,12 +238,15 @@ describe('原型战斗', () => {
 
   it('敌方驻军不会反扑出基地', () => {
     const { battle } = createPrototypeBattle(1);
-    battle.spawn('rifle', 'player', 1.5, 22.5, 'hold'); // 远处角落里的我方单位，保证战斗持续
+    battle.spawn('rifle', 'player', 1.5, MAP_W - 1.5, 'hold'); // 投送区角落里的我方单位
     battle.start();
-    for (let i = 0; i < 600; i++) battle.step();
-    expect(battle.outcome).toBeNull();
-    for (const e of battle.living('enemy')) {
-      expect(Math.hypot(e.x - e.postX, e.y - e.postY)).toBeLessThan(0.5);
+    for (let i = 0; i < 600 && !battle.outcome; i++) {
+      battle.step();
+      // 驻守的敌人会去迎击，但不会追出自己的基地
+      for (const e of battle.living('enemy')) {
+        const { x, y, w, h } = ENEMY_BASE_RECT;
+        expect(e.x > x - 1 && e.x < x + w + 1 && e.y > y - 1 && e.y < y + h + 1).toBe(true);
+      }
     }
   });
 

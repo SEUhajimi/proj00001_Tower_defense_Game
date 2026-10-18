@@ -10,7 +10,7 @@ import { Rng } from './rng';
 // 阶段 3 会改为读取 AI 基地的真实布局。
 
 export const BASE_SIZE = 24;
-export const DROP_RING = 4;
+export const DROP_RING = 24;
 export const MAP_W = BASE_SIZE + DROP_RING * 2;
 export const MAP_H = MAP_W;
 

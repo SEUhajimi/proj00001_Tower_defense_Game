@@ -1,5 +1,6 @@
 import { START_TECH } from '../../data/tech';
 import { placeStrongholds } from '../world/ai';
+import { REGION_PLOTS, START_PLOT } from './terrain';
 import { Base, newBaseState, type BaseState } from './base';
 import { advanceTo, type ResourceMap } from './economy';
 
@@ -48,9 +49,16 @@ export function parseSave(raw: string): BaseState | string {
   // v2 → v3 加科技树；v3 → v4 世界地图改为据点和道路，AI 基地按存档种子重新生成（以前吞并的地和建筑保留）
   if (old.version === 2) old.tech = [...START_TECH];
   if (old.version === 2 || old.version === 3) {
-    state = { ...old, version: 4, ai: placeStrongholds(old.seed, typeof old.lastTick === 'number' ? old.lastTick : Date.now()) };
-  } else if (old.version === 4) state = old as BaseState;
+    state = { ...old, version: 4 as unknown as 5, ai: placeStrongholds(old.seed, typeof old.lastTick === 'number' ? old.lastTick : Date.now()) };
+  } else if (old.version === 4 || old.version === 5) state = old as unknown as BaseState;
   else return '存档版本太旧或无法识别';
+  // v4 → v5 距离放大 4 倍：开局领地从 3×3 地块扩到 8×8，旧存档把这一圈补上
+  if ((state.version as number) < 5) {
+    const own = new Set(state.owned);
+    const { x0, y0, size } = START_PLOT;
+    for (let y = y0; y < y0 + size; y++) for (let x = x0; x < x0 + size; x++) own.add(y * REGION_PLOTS + x);
+    state = { ...state, version: 5, owned: [...own] };
+  }
   const ok = Array.isArray(state.owned) && Array.isArray(state.buildings) && Array.isArray(state.ai)
     && typeof state.seed === 'number' && !!state.res && typeof state.lastTick === 'number';
   return ok ? state : '存档内容不完整';

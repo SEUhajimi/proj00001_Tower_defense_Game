@@ -8,7 +8,7 @@ import { attackable, defenseLeft, generateAiLayout, slotKey, type AiBase } from 
 
 // 出击：战场 = 据点的真实布局（扣掉之前被打掉、还没恢复的）+ 四周 4 格宽的投送区。
 
-export const DROP_RING = 4;
+export const DROP_RING = 24; // 投送区宽度：比塔的射程宽，部署时能找到塔打不到的地方
 
 export type Roster = Partial<Record<DefId, number>>;
 
@@ -98,6 +98,7 @@ export function settleSortie(base: Base, ai: AiBase, fight: AiBattle, sent: Rost
     }
   }
 
+  base.trimTroops();
   const defenseBefore = defenseLeft(ai);
   const killed = new Set(ai.lost);
   for (const e of battle.entities) {

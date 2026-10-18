@@ -267,3 +267,5 @@ html, body {
 .overlay table.stats { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
 .overlay table.stats th { color: var(--mil-muted); font-weight: normal; text-align: left; }
 .overlay table.stats td, .overlay table.stats th { padding: 3px 4px; border-bottom: 1px solid var(--mil-line); }
+
+.overlay .unitrow small.gain { color: #9fd0ff; }

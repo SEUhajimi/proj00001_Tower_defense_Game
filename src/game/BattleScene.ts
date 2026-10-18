@@ -12,7 +12,7 @@ import { createDrill } from '../../shared/sim/world/drill';
 import { finishSortie, session } from './session';
 import { Hud } from '../ui/hud';
 import { footprintDiamond, pointsOf, TILE_H, TILE_W, tileDiamond, toScreen, toWorld } from './iso';
-import { FX_EXPLOSION, FX_SMOKE, ROCK_KEYS, texLift, texScale } from './art';
+import { dirIndex, FX_EXPLOSION, FX_SMOKE, groundKey, ROCK_KEYS, texAnchor, texLift, texScale, unitFrames } from './art';
 import { BASE_INSET, makeBaseTextures, makeTextures, PLANE_ALT, SIDE_COLOR, textureKey } from './textures';
 
 export type Phase = 'deploy' | 'battle' | 'result';
@@ -326,6 +326,16 @@ export class BattleScene extends Phaser.Scene {
     const g = this.terrain;
     g.clear();
     const grass = [0x8ab549, 0x85b045, 0x8fba4d];
+    // 有渲染的草地贴图就一块地（4×4 格）铺一张
+    if (groundKey('plain', 0, 0)) {
+      for (let by = 0; by < this.mapH; by += 4) {
+        for (let bx = 0; bx < this.mapW; bx += 4) {
+          const tile = groundKey('plain', bx / 4, by / 4)!, a = texAnchor(tile)!;
+          const c = toScreen(bx + 2, by + 2);
+          this.rocks.push(this.add.image(c.sx, c.sy, tile).setOrigin(a.x, a.y).setScale(texScale(tile)).setDepth(-999.5));
+        }
+      }
+    }
     for (let ty = 0; ty < this.mapH; ty++) {
       for (let tx = 0; tx < this.mapW; tx++) {
         const n = (tx * 7 + ty * 13 + ((tx * ty) % 5)) % 3;
@@ -399,16 +409,30 @@ export class BattleScene extends Phaser.Scene {
         continue;
       }
       if (!s) {
-        const key = this.texKeyOf(e);
+        const frames = unitFrames(e.defId, e.side);
+        const key = frames ? frames[0] : this.texKeyOf(e);
         s = this.add.image(0, 0, key).setScale(texScale(key));
         if (e.skin && e.side === 'enemy') s.setTint(AI_TINT);
-        s.setOrigin(0.5, e.def.size > 0 ? 1 : 0.5);
+        const a = texAnchor(key);
+        if (a) s.setOrigin(a.x, a.y);
+        else s.setOrigin(0.5, e.def.size > 0 ? 1 : 0.5);
         this.sprites.set(e.id, s);
       }
       const x = e.px + (e.x - e.px) * alpha, y = e.py + (e.y - e.py) * alpha;
       const p = toScreen(x, y);
-      if (e.def.size > 0) {
+      const frames = e.def.size > 0 ? null : unitFrames(e.defId, e.side);
+      if (e.def.size > 0 && texAnchor(s.texture.key)) {
+        s.setPosition(p.sx, p.sy); // 渲染图的锚点就是占地中心
+      } else if (e.def.size > 0) {
         s.setPosition(p.sx, p.sy + (e.skin ? BASE_INSET : 0.8) * e.def.size * (TILE_H / 2));
+      } else if (frames) {
+        // 渲染的单位：按朝向换图，不转图片；锚点是脚下（飞机是机身中心，画在空中）
+        s.setTexture(frames[dirIndex(e.facing)]);
+        if (isAir(e)) {
+          s.setPosition(p.sx, p.sy - PLANE_ALT).setDepth(5000 + x + y);
+          continue;
+        }
+        s.setPosition(p.sx, p.sy);
       } else if (isAir(e)) {
         // 飞机在高处，朝向按屏幕上的方向旋转；画在所有地面物体之上
         const d = toScreen(Math.cos(e.facing), Math.sin(e.facing));
@@ -617,7 +641,7 @@ export class BattleScene extends Phaser.Scene {
     cam.centerOn(c.sx, c.sy);
     // 开局缩放到整张战场都能看见
     const viewW = (this.mapW + this.mapH) * TILE_H + 80, viewH = (this.mapW + this.mapH) * (TILE_H / 2) + 120;
-    cam.setZoom(Phaser.Math.Clamp(Math.min(cam.width / viewW, cam.height / viewH), 0.4, 1.5));
+    cam.setZoom(Phaser.Math.Clamp(Math.min(cam.width / viewW, cam.height / viewH), 0.15, 1.5));
   }
 
   private setupInput(): void {
@@ -684,7 +708,7 @@ export class BattleScene extends Phaser.Scene {
 
     this.input.on('wheel', (_p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
       const cam = this.cameras.main;
-      cam.setZoom(Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.9 : 1.1), 0.4, 2));
+      cam.setZoom(Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.9 : 1.1), 0.15, 2));
     });
   }
 

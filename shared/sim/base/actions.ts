@@ -13,6 +13,7 @@ export type BaseAction =
   | { type: 'move'; uid: number; x: number; y: number }
   | { type: 'demolish'; uid: number }
   | { type: 'upgrade'; uid: number }
+  | { type: 'moveTroops'; moves: { defId: DefId; i: number; x: number; y: number }[] }
   | { type: 'buyPlot'; plot: number }
   | { type: 'recruit'; defId: DefId; n: number }
   | { type: 'repairAll' }
@@ -37,6 +38,14 @@ export function parseAction(raw: unknown): BaseAction | null {
       return int(a.uid) ? { type: 'demolish', uid: a.uid } : null;
     case 'upgrade':
       return int(a.uid) ? { type: 'upgrade', uid: a.uid } : null;
+    case 'moveTroops': {
+      if (!Array.isArray(a.moves) || !a.moves.length || a.moves.length > 300) return null;
+      const ok = a.moves.every((m: unknown) => {
+        const o = m as Record<string, unknown>;
+        return o && typeof o.defId === 'string' && o.defId in DEFS && int(o.i) && typeof o.x === 'number' && typeof o.y === 'number';
+      });
+      return ok ? { type: 'moveTroops', moves: a.moves as { defId: DefId; i: number; x: number; y: number }[] } : null;
+    }
     case 'buyPlot':
       return int(a.plot) ? { type: 'buyPlot', plot: a.plot } : null;
     case 'recruit':
@@ -63,6 +72,7 @@ export function applyAction(base: Base, a: BaseAction): true | string {
     case 'move': return base.move(a.uid, a.x, a.y);
     case 'demolish': return base.demolish(a.uid);
     case 'upgrade': return base.upgrade(a.uid);
+    case 'moveTroops': return base.moveTroops(a.moves);
     case 'buyPlot': return base.buyPlot(a.plot);
     case 'recruit': return base.recruit(a.defId, a.n);
     case 'repairAll': return base.repairAll();
